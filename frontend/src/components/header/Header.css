@@ -1,0 +1,62 @@
+.App-header {
+  background-color: #282c34ea;
+  padding: 1rem;
+  color: white;
+  height: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.header-container {
+  display: flex;
+  width: 100%;
+  max-width: 2200px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-main {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding-left: 2rem;
+}
+
+.header-user {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-right: 2rem;
+}
+
+.home-button {
+  background-color: #61dafb;
+  color: #282c34;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  height: 1.5rem;
+}
+
+.home-button:hover {
+  background-color: #4fa8d1;
+}
+
+.user-name {
+  font-size: 16px;
+  color: white;
+  font-weight: 500;
+  text-align: right;
+}
+
+code {
+  color: #61dafb;
+  padding: 2px 4px;
+  background-color: #20232a;
+  border-radius: 4px;
+} 

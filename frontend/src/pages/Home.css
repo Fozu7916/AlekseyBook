@@ -1,0 +1,53 @@
+.App {
+  text-align: center;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+  background-size: cover;
+  background-image: url("../../img/mainBackground.jpg");
+}
+
+.App-main {
+  padding: 1rem;
+  padding-left: 8rem;
+  padding-right: 8rem;
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  overflow: hidden;
+  max-height: calc(96vh - 120px);
+}
+
+
+.left-sidebar {
+  flex: 0 0 250px;
+  background-color: #282c34ea;
+  border-radius: 0.8rem;
+  padding: 20px;
+  color: white;
+  text-align: left;
+  overflow-y: auto;
+  max-height: calc(56vh - 120px);
+}
+
+.main-content {
+  flex: 1;
+  background-color: #282c34ea;
+  border-radius: 0.8rem;
+  padding: 20px;
+  color: white;
+  text-align: left;
+  overflow-y: auto;
+}
+
+h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  font-weight: 500;
+} 
