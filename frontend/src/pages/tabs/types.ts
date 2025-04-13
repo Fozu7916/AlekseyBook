@@ -1,4 +1,4 @@
-export type TabType = 'myPage' | 'communities' | 'friends' | 'music' | 'games' | 'other';
+export type TabType = 'main' | 'communities' | 'friends' | 'music' | 'games' | 'other';
 
 export interface TabProps {
   isActive?: boolean;

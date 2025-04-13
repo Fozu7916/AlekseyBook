@@ -11,10 +11,10 @@ import Header from '../components/header/Header';
 import Footer from '../components/footer/Footer';
 
 const Home: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('myPage');
+  const [activeTab, setActiveTab] = useState<TabType>('main');
 
   const tabs: Record<TabType, React.ReactNode> = {
-    myPage: <ProfileTab isActive={activeTab === 'myPage'} />,
+    main: <ProfileTab isActive={activeTab === 'main'} />,
     communities: <MessagesTab isActive={activeTab === 'communities'} />,
     friends: <FriendsTab isActive={activeTab === 'friends'} />,
     music: <MusicTab isActive={activeTab === 'music'} />,
@@ -33,10 +33,10 @@ const Home: React.FC = () => {
         
         <div className="left-sidebar">
           <div 
-            className={`left-sidebar-item ${activeTab === 'myPage' ? 'active' : ''}`}
-            onClick={() => handleTabClick('myPage')}
+            className={`left-sidebar-item ${activeTab === 'main' ? 'active' : ''}`}
+            onClick={() => handleTabClick('main')}
           >
-            Моя страница
+            Главная
           </div>
 
           <div 
