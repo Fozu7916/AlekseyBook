@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './UserDropdown.css';
+import { User } from '../../services/userService';
 
 interface UserDropdownProps {
-  username?: string;
+  user?: User | null;
   onLogout: () => void;
+  onProfileClick: () => void;
 }
 
-const UserDropdown: React.FC<UserDropdownProps> = ({ username, onLogout }) => {
+const UserDropdown: React.FC<UserDropdownProps> = ({ user, onLogout, onProfileClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -23,7 +25,7 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ username, onLogout }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (!username) {
+  if (!user) {
     return (
       <div className="auth-buttons">
         <button 
@@ -48,13 +50,16 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ username, onLogout }) => {
         className="user-name"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {username}
+        {user.username}
         <div className="dropdown-arrow">▼</div>
       </div>
       
       {isOpen && (
         <div className="dropdown-menu">
-          <div className="dropdown-item">Профиль</div>
+          <div className="dropdown-item" onClick={() => {
+            onProfileClick();
+            setIsOpen(false);
+          }}>Профиль</div>
           <div className="dropdown-item">Настройки</div>
           <div className="dropdown-divider"></div>
           <div className="dropdown-item" onClick={onLogout}>Выйти</div>

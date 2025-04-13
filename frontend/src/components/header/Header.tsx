@@ -1,25 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Header.css';
 import UserDropdown from './UserDropdown';
+import { userService, User } from '../../services/userService';
 
-const Header: React.FC = () => {
-  const [username, setUsername] = useState<string | undefined>('Username'); // Здесь будет логика получения имени пользователя
+interface HeaderProps {
+  onProfileClick: () => void;
+  onHomeClick: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onProfileClick, onHomeClick }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await userService.getCurrentUser();
+      setCurrentUser(user);
+    };
+
+    fetchUser();
+  }, []);
 
   const handleLogout = () => {
-    // Здесь будет логика выхода из аккаунта
-    setUsername(undefined);
+    userService.logout();
+    setCurrentUser(null);
+    window.location.reload(); // Перезагружаем страницу для сброса всех состояний
   };
 
   return (
     <header className="App-header">
       <div className="header-container">
         <div className="header-main">
-          <button className="home-button">Перейти на главную</button>
+          <button className="home-button" onClick={onHomeClick}>Перейти на главную</button>
         </div>
         <div className="header-user">
           <UserDropdown 
-            username={username}
+            user={currentUser}
             onLogout={handleLogout}
+            onProfileClick={onProfileClick}
           />
         </div>
       </div>

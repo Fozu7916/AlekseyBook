@@ -1,84 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import './Home.css';
-import ProfileTab from './tabs/ProfileTab';
+import MainTab from './tabs/MainTab';
 import MessagesTab from './tabs/MessagesTab';
 import FriendsTab from './tabs/FriendsTab';
 import MusicTab from './tabs/MusicTab';
 import SettingsTab from './tabs/SettingsTab';
 import NotificationsTab from './tabs/NotificationsTab';
+import ProfileTab from './tabs/ProfileTab';
 import { TabType } from './tabs/types';
 import Header from '../components/header/Header';
 import Footer from '../components/footer/Footer';
+import LeftSidebar from '../components/LeftSidebar/LeftSidebar';
+import { userService, User } from '../services/userService';
+
+const getTabFromPath = (pathname: string): TabType => {
+  const path = pathname.split('/')[1];
+  switch (path) {
+    case 'main':
+      return 'main';
+    case 'communities':
+      return 'communities';
+    case 'friends':
+      return 'friends';
+    case 'music':
+      return 'music';
+    case 'games':
+      return 'games';
+    case 'other':
+      return 'other';
+    case 'profile':
+      return 'profile';
+    default:
+      return 'main';
+  }
+};
 
 const Home: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('main');
+  const { username: urlUsername } = useParams<{ username?: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>(getTabFromPath(location.pathname));
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = await userService.getCurrentUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error('Ошибка при загрузке пользователя:', err);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    setActiveTab(getTabFromPath(location.pathname));
+  }, [location.pathname]);
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    if (tab === 'profile' && currentUser) {
+      navigate(`/profile/${currentUser.username}`);
+    }
+  };
 
   const tabs: Record<TabType, React.ReactNode> = {
-    main: <ProfileTab isActive={activeTab === 'main'} />,
+    main: <MainTab isActive={activeTab === 'main'} />,
     communities: <MessagesTab isActive={activeTab === 'communities'} />,
     friends: <FriendsTab isActive={activeTab === 'friends'} />,
     music: <MusicTab isActive={activeTab === 'music'} />,
     games: <SettingsTab isActive={activeTab === 'games'} />,
-    other: <NotificationsTab isActive={activeTab === 'other'} />
-  };
-
-  const handleTabClick = (tab: TabType) => {
-    setActiveTab(tab);
+    other: <NotificationsTab isActive={activeTab === 'other'} />,
+    profile: <ProfileTab isActive={activeTab === 'profile'} username={urlUsername || currentUser?.username || ''} />
   };
 
   return (
     <div className="App">
-      <Header />
+      <Header 
+        onProfileClick={() => handleTabChange('profile')}
+        onHomeClick={() => {
+          setActiveTab('main');
+          navigate('/main');
+        }}
+      />
       <div className="App-main">
-        
-        <div className="left-sidebar">
-          <div 
-            className={`left-sidebar-item ${activeTab === 'main' ? 'active' : ''}`}
-            onClick={() => handleTabClick('main')}
-          >
-            Главная
-          </div>
-
-          <div 
-            className={`left-sidebar-item ${activeTab === 'communities' ? 'active' : ''}`}
-            onClick={() => handleTabClick('communities')}
-          >
-            Сообщества
-          </div>
-
-          <div 
-            className={`left-sidebar-item ${activeTab === 'friends' ? 'active' : ''}`}
-            onClick={() => handleTabClick('friends')}
-          >
-            Друзья
-          </div>
-
-          <div 
-            className={`left-sidebar-item ${activeTab === 'music' ? 'active' : ''}`}
-            onClick={() => handleTabClick('music')}
-          >
-            Музыка
-          </div>
-
-          <div 
-            className={`left-sidebar-item ${activeTab === 'games' ? 'active' : ''}`}
-            onClick={() => handleTabClick('games')}
-          >
-            Игры
-          </div>
-
-          <div 
-            className={`left-sidebar-item ${activeTab === 'other' ? 'active' : ''}`}
-            onClick={() => handleTabClick('other')}
-          >
-            Прочее
-          </div>
-
-        </div>
+        <LeftSidebar 
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
         <div className="main-content">
           {tabs[activeTab]}
         </div>
-        
       </div>
       <Footer />
     </div>

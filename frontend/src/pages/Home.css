@@ -1,13 +1,10 @@
 .App {
   text-align: center;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  position: fixed;
+  position: relative;
   width: 100%;
-  top: 0;
-  left: 0;
   background-size: cover;
   background-image: url("../../img/mainBackground.jpg");
 }
@@ -16,43 +13,11 @@
   flex: 1;
   display: flex;
   gap: 20px;
-  overflow: hidden;
-  max-height: calc(96vh - 120px);
-}
-
-.left-sidebar {
-  flex: 0 0 250px;
-  background-color: #282c34ea;
-  border-radius: 0.8rem;
   padding: 20px;
-  color: white;
-  text-align: center;
-  overflow-y: auto;
-  max-height: calc(56vh - 120px);
-  margin-left: 8rem;
+  margin-top: 60px; 
+  height: calc(100vh - 120px); 
 }
 
-.left-sidebar-item {
-  text-align: center;
-  padding-top: 15px;
-  padding-bottom: 15px;
-  padding-left: 20px;
-  padding-right: 20px;
-  color: white;
-  font-size: 1.3rem;
-  overflow-y: auto;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.left-sidebar-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.left-sidebar-item.active {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-left: 3px solid #61dafb;
-}
 
 .main-content {
   flex: 1;
@@ -62,8 +27,10 @@
   color: white;
   text-align: left;
   overflow-y: auto;
+  height: 75vh;
   margin-right: 8rem;
-  margin-bottom: 2rem;
+  margin-left: rem;
+  margin-top: -3rem;
 }
 
 h2 {
