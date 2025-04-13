@@ -1,3 +1,23 @@
+.header {
+  background-color: #202225;
+  padding: 1rem;
+  color: white;
+  border-radius: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #61dafb;
+}
+
 .App-header {
   background-color: #282c34ea;
   padding: 1rem;
