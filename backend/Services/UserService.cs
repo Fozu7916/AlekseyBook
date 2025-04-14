@@ -5,6 +5,7 @@ using Backend.Models;
 using Backend.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 using BCrypt.Net;
+using Microsoft.AspNetCore.Http;
 
 namespace Backend.Services
 {
@@ -18,15 +19,18 @@ namespace Backend.Services
         Task<bool> DeleteUser(int id);
         string HashPassword(string password);
         bool VerifyPassword(string password, string hashedPassword);
+        Task<UserResponseDto?> UpdateAvatar(int userId, IFormFile avatar);
     }
 
     public class UserService : IUserService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public UserService(ApplicationDbContext context)
+        public UserService(ApplicationDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
+            _environment = environment;
         }
 
         public async Task<UserResponseDto> CreateUser(CreateUserDto createUserDto)
@@ -133,6 +137,56 @@ namespace Backend.Services
         public bool VerifyPassword(string password, string hashedPassword)
         {
             return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
+        }
+
+        public async Task<UserResponseDto?> UpdateAvatar(int userId, IFormFile avatar)
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return null;
+
+            // Создаем уникальное имя файла
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
+            var uploadsFolder = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "avatars");
+            
+            Console.WriteLine($"Uploading avatar to: {uploadsFolder}");
+            
+            // Создаем директорию, если она не существует
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+                Console.WriteLine($"Created directory: {uploadsFolder}");
+            }
+
+            var filePath = Path.Combine(uploadsFolder, fileName);
+            Console.WriteLine($"Saving file to: {filePath}");
+
+            // Сохраняем файл
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await avatar.CopyToAsync(stream);
+            }
+            Console.WriteLine($"File saved successfully: {filePath}");
+
+            // Удаляем старый аватар, если он существует
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+            {
+                var oldFilePath = Path.Combine(_environment.ContentRootPath, "wwwroot", user.AvatarUrl.TrimStart('/'));
+                Console.WriteLine($"Checking old file: {oldFilePath}");
+                if (File.Exists(oldFilePath))
+                {
+                    File.Delete(oldFilePath);
+                    Console.WriteLine($"Old file deleted: {oldFilePath}");
+                }
+            }
+
+            // Обновляем URL аватара в базе данных
+            user.AvatarUrl = $"/uploads/avatars/{fileName}";
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            Console.WriteLine($"Avatar URL updated in database: {user.AvatarUrl}");
+            
+            return MapToDto(user);
         }
 
         private static UserResponseDto MapToDto(User user)

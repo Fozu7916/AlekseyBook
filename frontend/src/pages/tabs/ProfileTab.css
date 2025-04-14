@@ -23,7 +23,12 @@
 }
 
 .profile-avatar {
-  flex-shrink: 0;
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  transition: opacity 0.3s;
 }
 
 .profile-avatar img {
@@ -87,4 +92,22 @@
 
 .profile-error {
   color: #f04747;
+}
+
+.avatar-uploading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border-radius: 50%;
+}
+
+.profile-avatar:hover {
+  opacity: 0.8;
 } 

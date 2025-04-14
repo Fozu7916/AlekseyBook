@@ -107,5 +107,50 @@ namespace Backend.Controllers
 
             return user;
         }
+
+        [HttpPost("avatar")]
+        [Authorize]
+        public async Task<ActionResult<UserResponseDto>> UploadAvatar(IFormFile avatar)
+        {
+            try
+            {
+                if (avatar == null || avatar.Length == 0)
+                {
+                    return BadRequest(new { message = "Файл не выбран" });
+                }
+
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int id))
+                {
+                    return Unauthorized();
+                }
+
+                // Проверяем размер файла (максимум 5MB)
+                if (avatar.Length > 5 * 1024 * 1024)
+                {
+                    return BadRequest(new { message = "Размер файла не должен превышать 5MB" });
+                }
+
+                // Проверяем тип файла
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+                var fileExtension = Path.GetExtension(avatar.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    return BadRequest(new { message = "Допустимые форматы: JPG, JPEG, PNG, GIF" });
+                }
+
+                var user = await _userService.UpdateAvatar(id, avatar);
+                if (user == null)
+                {
+                    return NotFound(new { message = "Пользователь не найден" });
+                }
+
+                return user;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Ошибка при загрузке аватара: {ex.Message}" });
+            }
+        }
     }
 } 

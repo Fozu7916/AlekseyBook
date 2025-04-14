@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
@@ -12,6 +12,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -28,6 +30,39 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
     fetchUserProfile();
   }, [username]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Проверяем размер файла (максимум 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Размер файла не должен превышать 5MB');
+      return;
+    }
+
+    // Проверяем тип файла
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Допустимые форматы: JPG, JPEG, PNG, GIF');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      const updatedUser = await userService.updateAvatar(file);
+      setUser(updatedUser);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке аватара');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (!isActive) return null;
 
@@ -46,9 +81,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   return (
     <div className="profile-container">
       <div className="profile-header">
-        <div className="profile-avatar">
-          <img src={user.avatarUrl || '/default-avatar.png'} alt={user.username} />
+        <div className="profile-avatar" onClick={handleAvatarClick} style={{ cursor: 'pointer' }}>
+          <img 
+            src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/default-avatar.png'} 
+            alt={user.username} 
+          />
+          {isUploading && <div className="avatar-uploading">Загрузка...</div>}
         </div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          style={{ display: 'none' }}
+        />
         <div className="profile-info">
           <h1>{user.username}</h1>
           <div className="profile-status">{user.status}</div>

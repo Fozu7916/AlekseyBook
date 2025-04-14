@@ -135,6 +135,30 @@ class UserService {
     this.token = null;
     localStorage.removeItem('token');
   }
+
+  async updateAvatar(file: File): Promise<User> {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await fetch(`${this.baseUrl}/users/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при загрузке аватара');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Update avatar error:', error);
+      throw error;
+    }
+  }
 }
 
 export const userService = new UserService();
