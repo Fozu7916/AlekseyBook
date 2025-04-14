@@ -60,19 +60,15 @@ class UserService {
       const response = await fetch(url, options);
       console.log('Response status:', response.status);
 
-      // Проверяем статус ответа до попытки получить JSON
       if (!response.ok) {
-        // Пытаемся получить сообщение об ошибке из ответа
         try {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Ошибка сервера');
         } catch (jsonError) {
-          // Если не удалось получить JSON, используем статус ответа
           throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
         }
       }
 
-      // Пытаемся получить данные из ответа
       try {
         const data = await response.json();
         console.log('Response data:', data);
@@ -83,11 +79,9 @@ class UserService {
       }
     } catch (error) {
       console.error('Request error:', error);
-      // Проверяем, является ли ошибка сетевой
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         throw new Error('Ошибка сети. Пожалуйста, проверьте подключение к интернету и убедитесь, что сервер запущен.');
       }
-      // Пробрасываем ошибку дальше
       throw error instanceof Error ? error : new Error('Неизвестная ошибка');
     }
   }

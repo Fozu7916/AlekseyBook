@@ -127,7 +127,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     try {
       if (!user) return;
 
-      // Валидация перед отправкой
       if (!editForm.status.trim()) {
         setError('Статус обязателен для заполнения');
         return;
