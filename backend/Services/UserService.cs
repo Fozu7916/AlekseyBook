@@ -81,42 +81,42 @@ namespace Backend.Services
 
         public async Task<UserResponseDto?> UpdateUser(int id, UpdateUserDto updateUserDto)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null) return null;
-
-            if (!string.IsNullOrEmpty(updateUserDto.Username) && updateUserDto.Username != user.Username)
+            try 
             {
-                var existingUsername = await _context.Users.AnyAsync(u => u.Username == updateUserDto.Username);
-                if (existingUsername)
-                {
-                    throw new Exception("Username already exists");
-                }
-                user.Username = updateUserDto.Username;
-            }
+                var user = await _context.Users.FindAsync(id);
+                if (user == null) return null;
 
-            if (!string.IsNullOrEmpty(updateUserDto.Email) && updateUserDto.Email != user.Email)
+                // Валидация длины статуса
+                if (updateUserDto.Status.Length > 50)
+                {
+                    throw new Exception("Статус не может быть длиннее 50 символов");
+                }
+
+                // Обновляем только те поля, которые были предоставлены
+                if (!string.IsNullOrEmpty(updateUserDto.Status))
+                {
+                    user.Status = updateUserDto.Status;
+                }
+
+                if (updateUserDto.Bio != null) // Разрешаем пустую строку для очистки био
+                {
+                    if (updateUserDto.Bio.Length > 1000)
+                    {
+                        throw new Exception("Биография не может быть длиннее 1000 символов");
+                    }
+                    user.Bio = updateUserDto.Bio;
+                }
+
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return MapToDto(user);
+            }
+            catch (Exception ex)
             {
-                var existingEmail = await _context.Users.AnyAsync(u => u.Email == updateUserDto.Email);
-                if (existingEmail)
-                {
-                    throw new Exception("Email already exists");
-                }
-                user.Email = updateUserDto.Email;
+                Console.Error.WriteLine($"Error updating user: {ex}");
+                throw new Exception("Ошибка при обновлении пользователя", ex);
             }
-
-            if (!string.IsNullOrEmpty(updateUserDto.AvatarUrl))
-                user.AvatarUrl = updateUserDto.AvatarUrl;
-
-            if (!string.IsNullOrEmpty(updateUserDto.Bio))
-                user.Bio = updateUserDto.Bio;
-
-            if (!string.IsNullOrEmpty(updateUserDto.Status))
-                user.Status = updateUserDto.Status;
-
-            user.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            return MapToDto(user);
         }
 
         public async Task<bool> DeleteUser(int id)

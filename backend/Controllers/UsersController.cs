@@ -61,19 +61,55 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, UpdateUserDto updateUserDto)
+        [Authorize]
+        public async Task<ActionResult<UserResponseDto>> UpdateUser(int id, [FromBody] UpdateUserDto updateUserDto)
         {
             try
             {
+                if (updateUserDto == null)
+                {
+                    Console.WriteLine("UpdateUserDto is null");
+                    return BadRequest(new { message = "Данные для обновления не предоставлены" });
+                }
+
+                if (string.IsNullOrEmpty(updateUserDto.Status))
+                {
+                    Console.WriteLine("Status is empty");
+                    return BadRequest(new { message = "Статус не может быть пустым" });
+                }
+
+                Console.WriteLine($"Updating user {id} with data: Status='{updateUserDto.Status}', Bio='{updateUserDto.Bio}'");
+
+                // Проверяем, что пользователь обновляет свой профиль
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                Console.WriteLine($"Current user ID from token: {userId}");
+
+                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int currentUserId))
+                {
+                    Console.WriteLine("Invalid user ID in token");
+                    return Unauthorized(new { message = "Недействительный токен" });
+                }
+
+                if (currentUserId != id)
+                {
+                    Console.WriteLine($"User {currentUserId} tried to update user {id}");
+                    return Forbid();
+                }
+
                 var user = await _userService.UpdateUser(id, updateUserDto);
                 if (user == null)
                 {
-                    return NotFound(new { message = "User not found" });
+                    Console.WriteLine($"User {id} not found");
+                    return NotFound(new { message = "Пользователь не найден" });
                 }
+
+                Console.WriteLine($"User {id} updated successfully");
                 return user;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Error updating user {id}: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return BadRequest(new { message = ex.Message });
             }
         }

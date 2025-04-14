@@ -21,6 +21,11 @@ interface RegisterData {
   password: string;
 }
 
+interface UpdateUserData {
+  status?: string;
+  bio?: string;
+}
+
 class UserService {
   private baseUrl = 'http://localhost:5038/api';
   private token: string | null = null;
@@ -52,28 +57,38 @@ class UserService {
         body: options.body ? JSON.parse(options.body as string) : undefined
       });
 
+      const response = await fetch(url, options);
+      console.log('Response status:', response.status);
+
+      // Проверяем статус ответа до попытки получить JSON
+      if (!response.ok) {
+        // Пытаемся получить сообщение об ошибке из ответа
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Ошибка сервера');
+        } catch (jsonError) {
+          // Если не удалось получить JSON, используем статус ответа
+          throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      // Пытаемся получить данные из ответа
       try {
-        const response = await fetch(url, options);
-        console.log('Response status:', response.status);
-        
         const data = await response.json();
         console.log('Response data:', data);
-        
-        if (!response.ok) {
-          throw new Error(data.message || 'Ошибка сервера');
-        }
-
         return data;
-      } catch (networkError) {
-        console.error('Network error:', networkError);
-        throw new Error('Ошибка сети. Пожалуйста, проверьте подключение к интернету и убедитесь, что сервер запущен.');
+      } catch (jsonError) {
+        console.error('Error parsing response:', jsonError);
+        throw new Error('Ошибка при обработке ответа сервера');
       }
     } catch (error) {
       console.error('Request error:', error);
-      if (error instanceof Error) {
-        throw error;
+      // Проверяем, является ли ошибка сетевой
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Ошибка сети. Пожалуйста, проверьте подключение к интернету и убедитесь, что сервер запущен.');
       }
-      throw new Error('Неизвестная ошибка');
+      // Пробрасываем ошибку дальше
+      throw error instanceof Error ? error : new Error('Неизвестная ошибка');
     }
   }
 
@@ -159,7 +174,26 @@ class UserService {
       throw error;
     }
   }
+
+  async updateUser(userId: number, data: UpdateUserData): Promise<User> {
+    try {
+      console.log('Updating user:', { userId, data });
+      
+      const response = await this.request(`/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+
+      console.log('Updated user:', response);
+      return response;
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при обновлении профиля');
+    }
+  }
 }
 
 export const userService = new UserService();
-export type { User, LoginData, RegisterData }; 
+export type { User, LoginData, RegisterData, UpdateUserData }; 

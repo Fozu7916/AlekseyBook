@@ -46,11 +46,10 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.WithOrigins("http://localhost:3000", "https://localhost:3000")
+        builder.SetIsOriginAllowed(_ => true) // Разрешаем все источники в режиме разработки
                .AllowAnyMethod()
                .AllowAnyHeader()
-               .AllowCredentials()
-               .WithExposedHeaders("Content-Disposition");
+               .AllowCredentials();
     });
 });
 
@@ -67,7 +66,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Important: UseCors must be called before UseHttpsRedirection and UseAuthorization
+// Используем CORS до всех остальных middleware
 app.UseCors();
 
 // Отключаем HTTPS редирект в режиме разработки
@@ -84,11 +83,7 @@ if (!Directory.Exists(wwwrootPath))
 }
 
 // Настраиваем путь для статических файлов
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(wwwrootPath),
-    RequestPath = ""
-});
+app.UseStaticFiles();
 
 // Настраиваем путь для загруженных файлов
 var uploadsPath = Path.Combine(wwwrootPath, "uploads");

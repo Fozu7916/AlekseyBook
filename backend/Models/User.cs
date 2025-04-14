@@ -29,6 +29,7 @@ namespace Backend.Models
         public string? AvatarUrl { get; set; }
 
         [StringLength(50)]
+        [Column("status", TypeName = "varchar(50)")]
         public string Status { get; set; } = "online";
 
         [Column("created_at")]

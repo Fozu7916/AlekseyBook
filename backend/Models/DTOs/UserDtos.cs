@@ -12,7 +12,7 @@ namespace Backend.Models.DTOs
         [EmailAddress]
         [StringLength(255)]
         public required string Email { get; set; }
-
+        
         [Required]
         [StringLength(255, MinimumLength = 6)]
         public required string Password { get; set; }
@@ -23,18 +23,12 @@ namespace Backend.Models.DTOs
 
     public class UpdateUserDto
     {
-        [StringLength(255)]
-        public string? Username { get; set; }
+        [Required(ErrorMessage = "Статус обязателен для заполнения")]
+        [StringLength(50, ErrorMessage = "Статус не может быть длиннее 50 символов")]
+        public string Status { get; set; } = string.Empty;
 
-        [EmailAddress]
-        [StringLength(255)]
-        public string? Email { get; set; }
-
-        [StringLength(255)]
-        public string? AvatarUrl { get; set; }
-
+        [StringLength(1000, ErrorMessage = "Биография не может быть длиннее 1000 символов")]
         public string? Bio { get; set; }
-        public string? Status { get; set; }
     }
 
     public class UserResponseDto
