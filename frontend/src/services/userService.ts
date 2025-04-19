@@ -212,6 +212,64 @@ class UserService {
         : new Error('Ошибка при обновлении профиля');
     }
   }
+
+  async addFriend(userId: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при добавлении в друзья';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Add friend error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при добавлении в друзья');
+    }
+  }
+
+  async sendMessage(userId: number, message: string): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          recipientId: userId,
+          content: message
+        })
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при отправке сообщения';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Send message error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при отправке сообщения');
+    }
+  }
 }
 
 export const userService = new UserService();
