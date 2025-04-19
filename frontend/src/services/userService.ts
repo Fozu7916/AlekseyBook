@@ -147,11 +147,16 @@ class UserService {
 
   async updateAvatar(file: File): Promise<User> {
     try {
+      const currentUser = await this.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('Пользователь не авторизован');
+      }
+
       const formData = new FormData();
       formData.append('avatar', file);
 
-      const response = await fetch(`${this.baseUrl}/users/avatar`, {
-        method: 'PUT',
+      const response = await fetch(`${this.baseUrl}/users/${currentUser.id}/avatar`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.token}`
         },
@@ -164,7 +169,6 @@ class UserService {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
         } catch {
-          // Если ответ не в формате JSON, используем стандартное сообщение
         }
         throw new Error(errorMessage);
       }
@@ -174,14 +178,12 @@ class UserService {
         updatedUser = await response.json();
       } catch (e) {
         // Если сервер не вернул JSON, получаем текущего пользователя
-        const currentUser = await this.getCurrentUser();
         if (!currentUser) {
           throw new Error('Не удалось получить данные пользователя');
         }
         updatedUser = currentUser;
       }
 
-      // Обновляем данные пользователя в localStorage
       localStorage.setItem('user', JSON.stringify(updatedUser));
       return updatedUser;
     } catch (error) {

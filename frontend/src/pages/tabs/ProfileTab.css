@@ -443,22 +443,16 @@
 }
 
 .view-all-button {
-  background: #36393f;
-  border-radius: 6px;
-  padding: 10px;
-  color: #5865f2;
-  font-size: 14px;
-  text-align: center;
   cursor: pointer;
+  color: var(--text-secondary);
+  padding: 8px;
+  border-radius: 8px;
   transition: background-color 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 60px;
 }
 
 .view-all-button:hover {
-  background: #40444b;
+  background-color: var(--surface-hover);
+  color: var(--text);
 }
 
 .profile-main {

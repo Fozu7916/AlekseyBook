@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
@@ -13,6 +14,7 @@ interface FriendPreview {
   username: string;
   avatarUrl?: string;
   status: string;
+  isOnline: boolean;
 }
 
 interface CommunityPreview {
@@ -53,9 +55,61 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   });
 
   const [friends] = useState<FriendPreview[]>([
+    {
+      id: 1,
+      username: 'Алиса',
+      avatarUrl: 'https://i.pravatar.cc/150?img=1',
+      status: 'онлайн',
+      isOnline: true
+    },
+    {
+      id: 2,
+      username: 'Максим',
+      avatarUrl: 'https://i.pravatar.cc/150?img=2',
+      status: 'играет в CS2',
+      isOnline: true
+    },
+    {
+      id: 3,
+      username: 'София',
+      avatarUrl: 'https://i.pravatar.cc/150?img=3',
+      status: 'была 2 часа назад',
+      isOnline: false
+    },
+    {
+      id: 4,
+      username: 'Артём',
+      avatarUrl: 'https://i.pravatar.cc/150?img=4',
+      status: 'был вчера',
+      isOnline: false
+    }
   ]);
 
   const [communities] = useState<CommunityPreview[]>([
+    {
+      id: 1,
+      name: 'Любители рок-музыки',
+      avatarUrl: 'https://picsum.photos/100?random=5',
+      membersCount: 12500
+    },
+    {
+      id: 2,
+      name: 'Программисты',
+      avatarUrl: 'https://picsum.photos/100?random=6',
+      membersCount: 45200
+    },
+    {
+      id: 3,
+      name: 'Киберспорт',
+      avatarUrl: 'https://picsum.photos/100?random=7',
+      membersCount: 78100
+    },
+    {
+      id: 4,
+      name: 'Мемы',
+      avatarUrl: 'https://picsum.photos/100?random=8',
+      membersCount: 156000
+    }
   ]);
 
   const [musicTracks] = useState<MusicTrack[]>([
@@ -86,6 +140,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [newPostContent, setNewPostContent] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -386,7 +441,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               </div>
             ))}
             {friends.length > 3 && (
-              <div className="view-all-button">
+              <div className="view-all-button" onClick={() => navigate('/friends')}>
                 Показать всех
               </div>
             )}
@@ -410,7 +465,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               </div>
             ))}
             {communities.length > 3 && (
-              <div className="view-all-button">
+              <div className="view-all-button" onClick={() => navigate('/communities')}>
                 Показать все
               </div>
             )}
@@ -436,7 +491,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               </div>
             ))}
             {musicTracks.length > 3 && (
-              <div className="view-all-button">
+              <div className="view-all-button" onClick={() => navigate('/music')}>
                 Показать все
               </div>
             )}
