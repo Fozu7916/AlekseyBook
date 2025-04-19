@@ -9,19 +9,25 @@
 }
 
 .profile-container {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 2rem;
-  background: #2c2f33;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  grid-template-areas: 
+    "header sidebar"
+    "main sidebar";
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .profile-header {
+  background: #2c2f33;
+  grid-area: header;
+  border-radius: 20px;
+  padding: 20px;
   display: flex;
   align-items: flex-start;
   gap: 2rem;
-  margin-bottom: 2rem;
 }
 
 .profile-avatar {
@@ -30,7 +36,6 @@
   height: 150px;
   border-radius: 50%;
   overflow: hidden;
-  transition: opacity 0.3s;
 }
 
 .profile-avatar img {
@@ -65,8 +70,7 @@
 }
 
 .profile-details {
-  border-top: 1px solid #40444b;
-  padding-top: 1rem;
+  padding-top: 0.5rem;
 }
 
 .profile-stat {
@@ -133,8 +137,12 @@
   text-align: center;
   padding: 5px;
   font-size: 12px;
-  border-bottom-left-radius: 50%;
-  border-bottom-right-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.profile-avatar:hover .avatar-edit-hint {
+  opacity: 1;
 }
 
 .edit-profile-button {
@@ -250,7 +258,6 @@
   margin-left: 8px;
 }
 
-/* Стили для секции друзей */
 .friends-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -301,7 +308,6 @@
   color: #72767d;
 }
 
-/* Стили для секции сообществ */
 .communities-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -344,7 +350,6 @@
   color: #72767d;
 }
 
-/* Стили для секции музыки */
 .music-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -421,7 +426,6 @@
   text-overflow: ellipsis;
 }
 
-/* Медиа-запросы для адаптивности */
 @media (max-width: 768px) {
   .friends-grid,
   .communities-grid,
@@ -455,4 +459,180 @@
 
 .view-all-button:hover {
   background: #40444b;
+}
+
+.profile-main {
+  grid-area: main;
+  margin-top: -4rem;
+}
+
+.profile-sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .profile-container {
+    grid-template-columns: 1fr;
+    grid-template-areas: 
+      "sidebar"
+      "header"
+      "main";
+  }
+}
+
+.wall-section {
+  margin-top: 4rem;
+  background: #2c2f33;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.post-form {
+  background: #36393f;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.post-form textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  background: #40444b;
+  border: none;
+  border-radius: 4px;
+  color: #dcddde;
+  font-size: 14px;
+  resize: vertical;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.post-form textarea:focus {
+  outline: none;
+  background: #454950;
+}
+
+.post-form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.character-count {
+  color: #72767d;
+  font-size: 12px;
+}
+
+.post-submit-button {
+  background: #5865f2;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.post-submit-button:hover {
+  background: #4752c4;
+}
+
+.post-submit-button:disabled {
+  background: #4f545c;
+  cursor: not-allowed;
+}
+
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.post-card {
+  background: #36393f;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.post-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.post-meta {
+  flex: 1;
+}
+
+.post-author {
+  color: #fff;
+  font-weight: 500;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.post-date {
+  color: #72767d;
+  font-size: 12px;
+}
+
+.post-content {
+  color: #dcddde;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.post-footer {
+  display: flex;
+  gap: 16px;
+  border-top: 1px solid #40444b;
+  padding-top: 12px;
+}
+
+.post-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #b9bbbe;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s;
+}
+
+.post-action:hover {
+  color: #dcddde;
+  background: #40444b;
+}
+
+.action-icon {
+  font-size: 16px;
+}
+
+.profile-last-seen {
+  display: flex;
+  gap: 8px;
+  color: #72767d;
+  font-size: 14px;
+  margin-top: 8px;
 } 

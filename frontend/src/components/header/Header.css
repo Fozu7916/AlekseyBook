@@ -79,4 +79,39 @@ code {
   padding: 2px 4px;
   background-color: #20232a;
   border-radius: 4px;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.login-button,
+.register-button {
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.login-button {
+  color: white;
+  background: none;
+  border: 1px solid white;
+}
+
+.login-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.register-button {
+  color: #282c34;
+  background: #61dafb;
+  border: none;
+}
+
+.register-button:hover {
+  background: #4fa8d1;
 } 

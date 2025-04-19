@@ -1,17 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
-using Backend.Models.DTOs;
-using Backend.Services;
+using backend.Data;
+using backend.Models;
+using backend.Models.DTOs;
+using backend.Services;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
-using Backend.Data;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
-namespace Backend.Controllers
+namespace backend.Controllers
 {
     [ApiController]
-    [Route("api/auth")]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -31,8 +33,7 @@ namespace Backend.Controllers
             try
             {
                 Console.WriteLine($"Attempting login for email: {loginData.Email}");
-                
-                // Находим пользователя по email
+            
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == loginData.Email);
 
@@ -43,7 +44,6 @@ namespace Backend.Controllers
                 }
 
                 Console.WriteLine("User found, verifying password");
-                // Проверяем пароль
                 if (!_userService.VerifyPassword(loginData.Password, user.PasswordHash))
                 {
                     Console.WriteLine("Password verification failed");
@@ -51,11 +51,9 @@ namespace Backend.Controllers
                 }
 
                 Console.WriteLine("Password verified successfully");
-                // Обновляем время последнего входа
                 user.LastLogin = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // Создаем JWT токен
                 var token = GenerateJwtToken(user);
                 Console.WriteLine("JWT token generated successfully");
 
@@ -84,7 +82,7 @@ namespace Backend.Controllers
             }
         }
 
-        private string GenerateJwtToken(Backend.Models.User user)
+        private string GenerateJwtToken(User user)
         {
             var jwtKey = _configuration["Jwt:Key"];
             if (string.IsNullOrEmpty(jwtKey))

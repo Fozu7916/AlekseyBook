@@ -95,6 +95,7 @@ class UserService {
 
       this.token = response.token;
       localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
 
       return response;
     } catch (error) {
@@ -112,6 +113,7 @@ class UserService {
 
       this.token = response.token;
       localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
 
       return response;
     } catch (error) {
@@ -121,14 +123,11 @@ class UserService {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    if (!this.token) return null;
-
-    try {
-      return await this.request('/users/me');
-    } catch (error) {
-      console.error('Get current user error:', error);
-      return null;
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      return JSON.parse(savedUser);
     }
+    return null;
   }
 
   async getUserByUsername(username: string): Promise<User> {
@@ -143,6 +142,7 @@ class UserService {
   logout() {
     this.token = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }
 
   async updateAvatar(file: File): Promise<User> {
@@ -151,7 +151,7 @@ class UserService {
       formData.append('avatar', file);
 
       const response = await fetch(`${this.baseUrl}/users/avatar`, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${this.token}`
         },
@@ -159,13 +159,36 @@ class UserService {
       });
 
       if (!response.ok) {
-        throw new Error('Ошибка при загрузке аватара');
+        let errorMessage = 'Ошибка при загрузке аватара';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          // Если ответ не в формате JSON, используем стандартное сообщение
+        }
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      let updatedUser: User;
+      try {
+        updatedUser = await response.json();
+      } catch (e) {
+        // Если сервер не вернул JSON, получаем текущего пользователя
+        const currentUser = await this.getCurrentUser();
+        if (!currentUser) {
+          throw new Error('Не удалось получить данные пользователя');
+        }
+        updatedUser = currentUser;
+      }
+
+      // Обновляем данные пользователя в localStorage
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
     } catch (error) {
       console.error('Update avatar error:', error);
-      throw error;
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при загрузке аватара');
     }
   }
 

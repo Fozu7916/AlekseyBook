@@ -29,6 +29,17 @@ interface MusicTrack {
   coverUrl?: string;
 }
 
+interface WallPost {
+  id: number;
+  authorId: number;
+  authorName: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt: Date;
+  likes: number;
+  comments: number;
+}
+
 const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +52,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     bio: ''
   });
 
-  // Временные данные для демонстрации
   const [friends] = useState<FriendPreview[]>([
   ]);
 
@@ -50,6 +60,30 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
   const [musicTracks] = useState<MusicTrack[]>([
   ]);
+
+  const [posts, setPosts] = useState<WallPost[]>([
+    {
+      id: 1,
+      authorId: 1,
+      authorName: "Иван Иванов",
+      authorAvatar: "/default-avatar.png",
+      content: "Привет всем! Это мой первый пост на стене 👋",
+      createdAt: new Date(),
+      likes: 5,
+      comments: 2
+    },
+    {
+      id: 2,
+      authorId: 2,
+      authorName: "Мария Петрова",
+      authorAvatar: "/default-avatar.png",
+      content: "Отличный профиль! Давно не виделись 😊",
+      createdAt: new Date(Date.now() - 86400000), // вчера
+      likes: 3,
+      comments: 1
+    }
+  ]);
+  const [newPostContent, setNewPostContent] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -163,6 +197,25 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     }));
   };
 
+  const handlePostSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostContent.trim()) return;
+
+    const newPost: WallPost = {
+      id: posts.length + 1,
+      authorId: 1, // текущий пользователь
+      authorName: "Вы",
+      authorAvatar: user?.avatarUrl,
+      content: newPostContent.trim(),
+      createdAt: new Date(),
+      likes: 0,
+      comments: 0
+    };
+
+    setPosts([newPost, ...posts]);
+    setNewPostContent("");
+  };
+
   if (!isActive) return null;
 
   if (isLoading) {
@@ -236,6 +289,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             <>
               <div className="profile-status">{user.status}</div>
               {user.bio && <div className="profile-bio">{user.bio}</div>}
+              {user.lastLogin && (
+                <div className="profile-last-seen">
+                  <span>Последний вход:</span>
+                  <span>{new Date(user.lastLogin).toLocaleDateString()}</span>
+                </div>
+              )}
               {isOwner && (
                 <button className="edit-profile-button" onClick={handleEditClick}>
                   Редактировать профиль
@@ -246,7 +305,70 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         </div>
       </div>
 
-      <div className="profile-content">
+      <div className="profile-main">
+        <div className="wall-section">
+          {isOwner && (
+            <form className="post-form" onSubmit={handlePostSubmit}>
+              <textarea
+                placeholder="Что у вас нового?"
+                value={newPostContent}
+                onChange={(e) => setNewPostContent(e.target.value)}
+                maxLength={1000}
+              />
+              <div className="post-form-footer">
+                <span className="character-count">
+                  {newPostContent.length}/1000
+                </span>
+                <button 
+                  type="submit" 
+                  disabled={!newPostContent.trim()}
+                  className="post-submit-button"
+                >
+                  Опубликовать
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="posts-list">
+            {posts.map(post => (
+              <div key={post.id} className="post-card">
+                <div className="post-header">
+                  <img 
+                    src={post.authorAvatar || '/default-avatar.png'} 
+                    alt={post.authorName} 
+                    className="post-avatar"
+                  />
+                  <div className="post-meta">
+                    <div className="post-author">{post.authorName}</div>
+                    <div className="post-date">
+                      {new Date(post.createdAt).toLocaleDateString('ru-RU', {
+                        day: 'numeric',
+                        month: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="post-content">{post.content}</div>
+                <div className="post-footer">
+                  <button className="post-action">
+                    <span className="action-icon">❤️</span>
+                    {post.likes}
+                  </button>
+                  <button className="post-action">
+                    <span className="action-icon">💬</span>
+                    {post.comments}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="profile-sidebar">
         <div className="profile-section friends-section">
           <h2>Друзья <span className="count">({friends.length})</span></h2>
           <div className="friends-grid">
@@ -320,19 +442,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="profile-details">
-        <div className="profile-stat">
-          <label>Дата регистрации:</label>
-          <span>{new Date(user.createdAt).toLocaleDateString()}</span>
-        </div>
-        {user.lastLogin && (
-          <div className="profile-stat">
-            <label>Последний вход:</label>
-            <span>{new Date(user.lastLogin).toLocaleDateString()}</span>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ import { TabType } from './tabs/types';
 import Header from '../components/header/Header';
 import Footer from '../components/footer/Footer';
 import LeftSidebar from '../components/LeftSidebar/LeftSidebar';
-import { userService, User } from '../services/userService';
+import { useAuth } from '../contexts/AuthContext';
 
 const getTabFromPath = (pathname: string): TabType => {
   const path = pathname.split('/')[1];
@@ -41,20 +41,7 @@ const Home: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>(getTabFromPath(location.pathname));
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const user = await userService.getCurrentUser();
-        setCurrentUser(user);
-      } catch (err) {
-        console.error('Ошибка при загрузке пользователя:', err);
-      }
-    };
-
-    fetchCurrentUser();
-  }, []);
+  const { user } = useAuth();
 
   useEffect(() => {
     setActiveTab(getTabFromPath(location.pathname));
@@ -62,8 +49,8 @@ const Home: React.FC = () => {
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    if (tab === 'profile' && currentUser) {
-      navigate(`/profile/${currentUser.username}`);
+    if (tab === 'profile' && user) {
+      navigate(`/profile/${user.username}`);
     }
   };
 
@@ -74,7 +61,7 @@ const Home: React.FC = () => {
     music: <MusicTab isActive={activeTab === 'music'} />,
     games: <SettingsTab isActive={activeTab === 'games'} />,
     other: <NotificationsTab isActive={activeTab === 'other'} />,
-    profile: <ProfileTab isActive={activeTab === 'profile'} username={urlUsername || currentUser?.username || ''} />
+    profile: <ProfileTab isActive={activeTab === 'profile'} username={urlUsername || user?.username || ''} />
   };
 
   return (

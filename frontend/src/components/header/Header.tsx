@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import './Header.css';
 import UserDropdown from './UserDropdown';
-import { userService, User } from '../../services/userService';
+import { userService } from '../../services/userService';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   onProfileClick: () => void;
@@ -9,21 +11,11 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onProfileClick, onHomeClick }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const user = await userService.getCurrentUser();
-      setCurrentUser(user);
-    };
-
-    fetchUser();
-  }, []);
+  const { user, setUser } = useAuth();
 
   const handleLogout = () => {
     userService.logout();
-    setCurrentUser(null);
-    window.location.reload(); // Перезагружаем страницу для сброса всех состояний
+    setUser(null);
   };
 
   return (
@@ -33,11 +25,18 @@ const Header: React.FC<HeaderProps> = ({ onProfileClick, onHomeClick }) => {
           <button className="home-button" onClick={onHomeClick}>Перейти на главную</button>
         </div>
         <div className="header-user">
-          <UserDropdown 
-            user={currentUser}
-            onLogout={handleLogout}
-            onProfileClick={onProfileClick}
-          />
+          {user ? (
+            <UserDropdown 
+              user={user}
+              onLogout={handleLogout}
+              onProfileClick={onProfileClick}
+            />
+          ) : (
+            <div className="auth-buttons">
+              <Link to="/auth" className="login-button">Войти</Link>
+              <Link to="/auth?register=true" className="register-button">Регистрация</Link>
+            </div>
+          )}
         </div>
       </div>
     </header>
