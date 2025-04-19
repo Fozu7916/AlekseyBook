@@ -140,12 +140,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
         // Загружаем список друзей
         try {
-          const friendsList = await userService.getFriendsList();
           if (isOwner) {
-            // Если это профиль текущего пользователя, показываем всех его друзей
+            // Если это профиль текущего пользователя, получаем полный список друзей
+            const friendsList = await userService.getFriendsList();
             setFriends(friendsList.friends);
           } else {
-            // Если это чужой профиль, проверяем статус дружбы
+            // Если это чужой профиль, получаем список друзей этого пользователя
+            const userFriends = await userService.getUserFriendsList(userData.id);
+            setFriends(userFriends);
+            
+            // Проверяем статус дружбы с текущим пользователем
+            const friendsList = await userService.getFriendsList();
             setIsFriend(friendsList.friends.some(friend => friend.id === userData.id));
             setFriendRequestSent(friendsList.sentRequests.some(friend => friend.id === userData.id));
             setFriendRequestReceived(friendsList.pendingRequests.some(friend => friend.id === userData.id));

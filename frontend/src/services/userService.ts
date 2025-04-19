@@ -389,6 +389,33 @@ class UserService {
     }
   }
 
+  async getUserFriendsList(userId: number): Promise<User[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends/user/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при получении списка друзей пользователя';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Get user friends list error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при получении списка друзей пользователя');
+    }
+  }
+
   async checkFriendshipStatus(friendId: number): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseUrl}/friends/${friendId}/status`, {

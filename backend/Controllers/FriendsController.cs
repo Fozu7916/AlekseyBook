@@ -123,6 +123,20 @@ namespace backend.Controllers
             }
         }
 
+        [HttpGet("user/{userId}")]
+        public async Task<ActionResult<List<UserResponseDto>>> GetUserFriendsList(int userId)
+        {
+            try
+            {
+                var result = await _friendService.GetUserFriendsList(userId);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpGet("{friendId}/status")]
         public async Task<ActionResult<bool>> CheckFriendshipStatus(int friendId)
         {

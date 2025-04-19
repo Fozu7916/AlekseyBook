@@ -14,6 +14,7 @@ namespace backend.Services
         Task<bool> BlockUser(int userId, int blockedUserId);
         Task<FriendListResponseDto> GetFriendsList(int userId);
         Task<bool> IsFriend(int userId, int friendId);
+        Task<List<UserResponseDto>> GetUserFriendsList(int userId);
     }
 
     public class FriendService : IFriendService
@@ -185,6 +186,23 @@ namespace backend.Services
                     ((f.UserId == userId && f.FriendId == friendId) ||
                      (f.UserId == friendId && f.FriendId == userId)) &&
                     f.Status == FriendStatus.Accepted);
+        }
+
+        public async Task<List<UserResponseDto>> GetUserFriendsList(int userId)
+        {
+            var friends = await _context.Friends
+                .Include(f => f.User)
+                .Include(f => f.FriendUser)
+                .Where(f => 
+                    (f.UserId == userId || f.FriendId == userId) &&
+                    f.Status == FriendStatus.Accepted)
+                .ToListAsync();
+
+            return friends
+                .Select(f => f.UserId == userId ? 
+                    MapToUserResponseDto(f.FriendUser) : 
+                    MapToUserResponseDto(f.User))
+                .ToList();
         }
 
         private async Task<FriendResponseDto> MapToFriendResponseDto(Friend friend)
