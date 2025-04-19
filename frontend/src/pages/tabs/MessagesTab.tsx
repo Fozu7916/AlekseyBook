@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import './Tabs.css';
 import './MessagesTab.css';
 import { TabProps } from './types';
 import { userService, User, Message, ChatPreview } from '../../services/userService';
+import { chatService } from '../../services/chatService';
 
 const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -12,39 +13,81 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<{[key: string]: boolean}>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
+  const MESSAGES_PER_PAGE = 40;
 
   useEffect(() => {
     if (isActive) {
+      chatService.startConnection();
       loadChats();
       if (userId) {
         loadUserAndChat(parseInt(userId));
       }
+
+      // Подписываемся на новые сообщения
+      const unsubscribeMessage = chatService.onMessage((message) => {
+        console.log('Получено новое сообщение в компоненте:', message);
+        setMessages(prev => [...prev, message]);
+        loadChats();
+      });
+
+      return () => {
+        chatService.stopConnection();
+        unsubscribeMessage();
+      };
     }
   }, [isActive, userId]);
 
   useEffect(() => {
     if (selectedChat) {
-      loadMessages(selectedChat.id);
+      loadMessages(selectedChat.id, true);
       markMessagesAsRead(selectedChat.id);
 
-      // Устанавливаем интервал для обновления сообщений
-      const interval = setInterval(() => {
-        if (selectedChat) {
-          loadMessages(selectedChat.id);
-          loadChats();
+      console.log('Подписываюсь на события печатания для:', selectedChat.id);
+      const unsubscribe = chatService.onTypingStatus((userId, isTyping) => {
+        console.log('Получен статус печатания:', userId, isTyping, 'текущий чат:', selectedChat.id);
+        if (userId === selectedChat.id.toString()) {
+          setTypingUsers(prev => ({ ...prev, [userId]: isTyping }));
         }
-      }, 3000); // Обновляем каждые 3 секунды
+      });
 
-      return () => clearInterval(interval);
+      return () => {
+        console.log('Отписываюсь от событий печатания для:', selectedChat.id);
+        unsubscribe();
+      };
     }
   }, [selectedChat]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [selectedChat, messages]);
+
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      if (container.scrollTop < 100 && hasMore && !isLoading) {
+        loadMessages(selectedChat!.id, false);
+      }
+    }
+  }, [selectedChat, hasMore, isLoading]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
 
   const loadChats = async () => {
     try {
@@ -67,24 +110,49 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     }
   };
 
-  const loadMessages = async (userId: number) => {
+  const loadMessages = async (userId: number, reset: boolean) => {
     try {
+      setIsLoading(true);
+      
+      if (reset) {
+        setPage(1);
+        setHasMore(true);
+      }
+
       const chatMessages = await userService.getChatMessages(userId);
-      // Преобразуем время в локальное для каждого сообщения
-      const messagesWithLocalTime = chatMessages.map(msg => ({
+      const sortedMessages = [...chatMessages].sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      
+      const totalMessages = sortedMessages.length;
+      const end = totalMessages;
+      const start = Math.max(totalMessages - (page * MESSAGES_PER_PAGE), 0);
+      const pageMessages = sortedMessages.slice(start, end);
+      
+      const messagesWithLocalTime = pageMessages.map(msg => ({
         ...msg,
         createdAt: new Date(new Date(msg.createdAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
       }));
-      setMessages(messagesWithLocalTime.reverse());
+
+      setMessages(messagesWithLocalTime);
+      if (reset) {
+        setTimeout(scrollToBottom, 100);
+      }
+
+      setHasMore(start > 0);
+      if (!reset) {
+        setPage(prev => prev + 1);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке сообщений');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const markMessagesAsRead = async (userId: number) => {
     try {
       await userService.markMessagesAsRead(userId);
-      // Обновляем список чатов, чтобы обновить счетчики непрочитанных сообщений
       loadChats();
     } catch (err) {
       console.error('Ошибка при отметке сообщений как прочитанных:', err);
@@ -93,17 +161,24 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
   const formatMessageTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    // Получаем локальное время с учетом UTC
     const hours = date.getHours();
     const minutes = date.getMinutes();
     
-    // Форматируем время вручную
     return `${hours}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedChat || !newMessage.trim()) return;
+
+    // Мгновенно отключаем статус печатания при отправке
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (selectedChat && isTyping) {
+      setIsTyping(false);
+      chatService.sendTypingStatus(selectedChat.id.toString(), false);
+    }
 
     const messageContent = newMessage.trim();
     setNewMessage('');
@@ -112,29 +187,11 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       const currentUser = await userService.getCurrentUser();
       if (!currentUser) throw new Error('Пользователь не авторизован');
 
-      // Создаем дату в локальном времени
-      const now = new Date();
-      const tempMessage: Message = {
-        id: Date.now(),
-        content: messageContent,
-        sender: currentUser,
-        receiver: selectedChat,
-        isRead: false,
-        createdAt: now.toISOString()
-      };
-
-      setMessages(prevMessages => [...prevMessages, tempMessage]);
-      scrollToBottom();
-
+      // Отправляем сообщение на сервер
       const sentMessage = await userService.sendMessage(selectedChat.id, messageContent);
-      
-      setMessages(prevMessages => 
-        prevMessages.map(msg => 
-          msg.id === tempMessage.id ? sentMessage : msg
-        )
-      );
+      setMessages(prev => [...prev, sentMessage]);
+      setTimeout(scrollToBottom, 100);
 
-      loadChats();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при отправке сообщения');
     }
@@ -146,8 +203,33 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
   };
+
+  const handleTyping = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (selectedChat && !isTyping) {
+      setIsTyping(true);
+      console.log('Отправляю статус печатания для:', selectedChat.id);
+      chatService.sendTypingStatus(selectedChat.id.toString(), true);
+    }
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      if (selectedChat) {
+        console.log('Отправляю статус остановки печатания для:', selectedChat.id);
+        chatService.sendTypingStatus(selectedChat.id.toString(), false);
+      }
+    }, 3000);
+  }, [selectedChat, isTyping]);
 
   if (!isActive) return null;
 
@@ -198,11 +280,29 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
               />
               <div className="chat-info">
                 <div className="chat-name">{selectedChat.username}</div>
-                <div className="chat-status">{selectedChat.status || 'Нет статуса'}</div>
+                <div className="chat-status">
+                  {typingUsers[selectedChat.id.toString()] ? (
+                    <span className="typing-status">
+                      печатает
+                      <span className="typing-dots">
+                        <span className="typing-dot"></span>
+                        <span className="typing-dot"></span>
+                        <span className="typing-dot"></span>
+                      </span>
+                    </span>
+                  ) : (
+                    selectedChat.status || 'Нет статуса'
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="messages-list">
+            <div className="messages-list" ref={messagesContainerRef} onScroll={handleScroll}>
+              {isLoading && hasMore && (
+                <div className="load-more">
+                  Загрузка сообщений...
+                </div>
+              )}
               {messages.map(message => (
                 <div
                   key={message.id}
@@ -214,13 +314,12 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
                   </div>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
             </div>
 
             <form className="message-input" onSubmit={handleSendMessage}>
               <textarea
                 value={newMessage}
-                onChange={e => setNewMessage(e.target.value)}
+                onChange={handleTyping}
                 placeholder="Введите сообщение..."
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) {

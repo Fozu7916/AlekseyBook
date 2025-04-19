@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using backend.Models.DTOs;
 using System.Security.Claims;
+using Microsoft.AspNetCore.SignalR;
+using backend.Hubs;
 
 namespace backend.Controllers
 {
@@ -12,10 +14,12 @@ namespace backend.Controllers
     public class MessagesController : ControllerBase
     {
         private readonly IMessageService _messageService;
+        private readonly IHubContext<ChatHub> _hubContext;
 
-        public MessagesController(IMessageService messageService)
+        public MessagesController(IMessageService messageService, IHubContext<ChatHub> hubContext)
         {
             _messageService = messageService;
+            _hubContext = hubContext;
         }
 
         private int GetCurrentUserId()
@@ -34,6 +38,11 @@ namespace backend.Controllers
             {
                 var userId = GetCurrentUserId();
                 var message = await _messageService.SendMessage(userId, messageDto);
+
+                // Отправляем сообщение через SignalR
+                await _hubContext.Clients.Group(messageDto.ReceiverId.ToString())
+                    .SendAsync("ReceiveMessage", message);
+
                 return Ok(message);
             }
             catch (Exception ex)

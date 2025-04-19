@@ -30,6 +30,9 @@ namespace backend.Services
         Task<User> GetUserByEmailAsync(string email);
         Task<bool> IsEmailTakenAsync(string email);
         Task<bool> IsUsernameTakenAsync(string username);
+        Task<(UserResponseDto User, string Token)> RegisterUserAsync(RegisterUserDto registerData);
+        Task<(UserResponseDto User, string Token)> LoginUserAsync(LoginUserDto loginData);
+        Task<string> UpdateUserAvatarAsync(int id, string avatarUrl);
     }
 
     public class UserService : IUserService
@@ -288,6 +291,110 @@ namespace backend.Services
                 IsVerified = user.IsVerified,
                 Bio = user.Bio
             };
+        }
+
+        public async Task<(UserResponseDto User, string Token)> RegisterUserAsync(RegisterUserDto registerData)
+        {
+            if (await _context.Users.AnyAsync(u => u.Email == registerData.Email))
+            {
+                throw new Exception("Пользователь с таким email уже существует");
+            }
+
+            if (await _context.Users.AnyAsync(u => u.Username == registerData.Username))
+            {
+                throw new Exception("Пользователь с таким именем уже существует");
+            }
+
+            var user = new User
+            {
+                Username = registerData.Username,
+                Email = registerData.Email,
+                PasswordHash = HashPassword(registerData.Password),
+                Status = "online",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                IsVerified = false
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            var response = new UserResponseDto
+            {
+                Id = user.Id,
+                Username = user.Username ?? throw new Exception("Username не может быть null"),
+                Email = user.Email ?? throw new Exception("Email не может быть null"),
+                Status = user.Status,
+                AvatarUrl = user.AvatarUrl,
+                CreatedAt = user.CreatedAt,
+                LastLogin = user.LastLogin,
+                IsVerified = user.IsVerified,
+                Bio = user.Bio
+            };
+
+            return (response, GenerateJwtToken(user));
+        }
+
+        private string GenerateJwtToken(User user)
+        {
+            var key = _configuration["Jwt:Key"] ?? throw new Exception("JWT ключ не настроен");
+            var issuer = _configuration["Jwt:Issuer"] ?? throw new Exception("JWT издатель не настроен");
+            var audience = _configuration["Jwt:Audience"] ?? throw new Exception("JWT аудитория не настроена");
+
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email ?? ""),
+                new Claim(ClaimTypes.Name, user.Username ?? "")
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: DateTime.Now.AddDays(7),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public async Task<(UserResponseDto User, string Token)> LoginUserAsync(LoginUserDto loginData)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginData.Email);
+            
+            if (user == null || !VerifyPassword(loginData.Password, user.PasswordHash))
+            {
+                throw new Exception("Неверный email или пароль");
+            }
+
+            var userDto = MapToDto(user);
+            var token = GenerateJwtToken(userDto);
+            
+            return (userDto, token);
+        }
+
+        public async Task<string> UpdateUserAvatarAsync(int id, string avatarUrl)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) throw new Exception("Пользователь не найден");
+
+            if (string.IsNullOrEmpty(avatarUrl))
+            {
+                user.AvatarUrl = null;
+            }
+            else
+            {
+                user.AvatarUrl = avatarUrl;
+            }
+
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return user.AvatarUrl;
         }
     }
 } 

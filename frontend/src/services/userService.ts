@@ -1,3 +1,5 @@
+import { chatService } from './chatService';
+
 interface User {
   id: number;
   username: string;
@@ -463,10 +465,34 @@ class UserService {
   }
 
   async sendMessage(receiverId: number, content: string): Promise<Message> {
-    return this.request('/messages', {
-      method: 'POST',
-      body: JSON.stringify({ receiverId, content })
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ receiverId, content })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Ошибка при отправке сообщения');
+      }
+
+      const message = await response.json();
+      console.log('Сообщение успешно отправлено:', message);
+      
+      // Отправляем сообщение через SignalR
+      if (chatService.isConnected()) {
+        await chatService.sendMessage(message);
+      }
+
+      return message;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
   }
 
   async getChatMessages(otherUserId: number): Promise<Message[]> {
