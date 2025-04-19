@@ -57,36 +57,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     bio: ''
   });
 
-  const [friends] = useState<FriendPreview[]>([
-    {
-      id: 1,
-      username: 'Алиса',
-      avatarUrl: 'https://i.pravatar.cc/150?img=1',
-      status: 'онлайн',
-      isOnline: true
-    },
-    {
-      id: 2,
-      username: 'Максим',
-      avatarUrl: 'https://i.pravatar.cc/150?img=2',
-      status: 'играет в CS2',
-      isOnline: true
-    },
-    {
-      id: 3,
-      username: 'София',
-      avatarUrl: 'https://i.pravatar.cc/150?img=3',
-      status: 'была 2 часа назад',
-      isOnline: false
-    },
-    {
-      id: 4,
-      username: 'Артём',
-      avatarUrl: 'https://i.pravatar.cc/150?img=4',
-      status: 'был вчера',
-      isOnline: false
-    }
-  ]);
+  const [friends, setFriends] = useState<User[]>([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(true);
 
   const [communities] = useState<CommunityPreview[]>([
     {
@@ -166,20 +138,26 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         const isOwner = currentUserData?.username === username;
         setIsOwner(isOwner);
 
-        // Проверяем статус дружбы только если пользователь авторизован и это не его профиль
-        if (currentUserData && !isOwner) {
-          try {
-            const friendsList = await userService.getFriendsList();
+        // Загружаем список друзей
+        try {
+          const friendsList = await userService.getFriendsList();
+          if (isOwner) {
+            // Если это профиль текущего пользователя, показываем всех его друзей
+            setFriends(friendsList.friends);
+          } else {
+            // Если это чужой профиль, проверяем статус дружбы
             setIsFriend(friendsList.friends.some(friend => friend.id === userData.id));
             setFriendRequestSent(friendsList.sentRequests.some(friend => friend.id === userData.id));
             setFriendRequestReceived(friendsList.pendingRequests.some(friend => friend.id === userData.id));
-          } catch (err) {
-            console.error('Ошибка при получении списка друзей:', err);
-            // Не показываем ошибку пользователю, просто скрываем кнопки друзей
-            setIsFriend(false);
-            setFriendRequestSent(false);
-            setFriendRequestReceived(false);
           }
+        } catch (err) {
+          console.error('Ошибка при получении списка друзей:', err);
+          setFriends([]);
+          setIsFriend(false);
+          setFriendRequestSent(false);
+          setFriendRequestReceived(false);
+        } finally {
+          setIsLoadingFriends(false);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ошибка при загрузке профиля');
@@ -531,23 +509,31 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         <div className="profile-section friends-section">
           <h2>Друзья <span className="count">({friends.length})</span></h2>
           <div className="friends-grid">
-            {friends.slice(0, 3).map(friend => (
-              <div key={friend.id} className="friend-card">
-                <img 
-                  src={friend.avatarUrl || '/images/default-avatar.svg'} 
-                  alt={friend.username} 
-                  className="friend-avatar"
-                />
-                <div className="friend-info">
-                  <div className="friend-name">{friend.username}</div>
-                  <div className={`friend-status ${friend.status}`}>{friend.status}</div>
-                </div>
-              </div>
-            ))}
-            {friends.length > 3 && (
-              <div className="view-all-button" onClick={() => navigate('/friends')}>
-                Показать всех
-              </div>
+            {isLoadingFriends ? (
+              <div className="loading-friends">Загрузка друзей...</div>
+            ) : friends.length > 0 ? (
+              <>
+                {friends.slice(0, 3).map(friend => (
+                  <div key={friend.id} className="friend-card" onClick={() => navigate(`/profile/${friend.username}`)}>
+                    <img 
+                      src={friend.avatarUrl ? `http://localhost:5038${friend.avatarUrl}` : '/images/default-avatar.svg'} 
+                      alt={friend.username} 
+                      className="friend-avatar"
+                    />
+                    <div className="friend-info">
+                      <div className="friend-name">{friend.username}</div>
+                      <div className="friend-status">{friend.status || 'Нет статуса'}</div>
+                    </div>
+                  </div>
+                ))}
+                {friends.length > 3 && (
+                  <div className="view-all-button" onClick={() => navigate('/friends')}>
+                    Показать всех
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="no-friends">Нет друзей</div>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 .App-footer {
   background-color: #282c34ea;
   color: white;
+  padding-top: 0.7rem;
   text-align: center;
   position: fixed;
   bottom: 0;
