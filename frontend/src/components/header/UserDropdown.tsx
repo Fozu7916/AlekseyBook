@@ -45,7 +45,7 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ user, onLogout, onProfileCl
   }
 
   return (
-    <div className="user-dropdown" ref={dropdownRef}>
+    <div className={`user-dropdown ${isOpen ? 'open' : ''}`} ref={dropdownRef}>
       <div 
         className="user-name"
         onClick={() => setIsOpen(!isOpen)}
