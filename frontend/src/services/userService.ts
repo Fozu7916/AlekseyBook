@@ -26,6 +26,21 @@ interface UpdateUserData {
   bio?: string;
 }
 
+interface FriendResponse {
+  id: number;
+  user: User;
+  friend: User;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface FriendList {
+  friends: User[];
+  pendingRequests: User[];
+  sentRequests: User[];
+}
+
 class UserService {
   private baseUrl = 'http://localhost:5038/api';
   private token: string | null = null;
@@ -213,18 +228,17 @@ class UserService {
     }
   }
 
-  async addFriend(userId: number): Promise<void> {
+  async sendFriendRequest(friendId: number): Promise<FriendResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/friends/${userId}`, {
+      const response = await fetch(`${this.baseUrl}/friends/${friendId}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${this.token}`
         }
       });
 
       if (!response.ok) {
-        let errorMessage = 'Ошибка при добавлении в друзья';
+        let errorMessage = 'Ошибка при отправке запроса в друзья';
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
@@ -232,30 +246,55 @@ class UserService {
         }
         throw new Error(errorMessage);
       }
+
+      return await response.json();
     } catch (error) {
-      console.error('Add friend error:', error);
+      console.error('Send friend request error:', error);
       throw error instanceof Error 
         ? error 
-        : new Error('Ошибка при добавлении в друзья');
+        : new Error('Ошибка при отправке запроса в друзья');
     }
   }
 
-  async sendMessage(userId: number, message: string): Promise<void> {
+  async acceptFriendRequest(friendId: number): Promise<FriendResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/messages`, {
+      const response = await fetch(`${this.baseUrl}/friends/${friendId}/accept`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          recipientId: userId,
-          content: message
-        })
+          'Authorization': `Bearer ${this.token}`
+        }
       });
 
       if (!response.ok) {
-        let errorMessage = 'Ошибка при отправке сообщения';
+        let errorMessage = 'Ошибка при принятии запроса в друзья';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Accept friend request error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при принятии запроса в друзья');
+    }
+  }
+
+  async declineFriendRequest(friendId: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends/${friendId}/decline`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при отклонении запроса в друзья';
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
@@ -264,13 +303,119 @@ class UserService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Send message error:', error);
+      console.error('Decline friend request error:', error);
       throw error instanceof Error 
         ? error 
-        : new Error('Ошибка при отправке сообщения');
+        : new Error('Ошибка при отклонении запроса в друзья');
+    }
+  }
+
+  async removeFriend(friendId: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends/${friendId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при удалении из друзей';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Remove friend error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при удалении из друзей');
+    }
+  }
+
+  async blockUser(userId: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends/${userId}/block`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при блокировке пользователя';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error('Block user error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при блокировке пользователя');
+    }
+  }
+
+  async getFriendsList(): Promise<FriendList> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при получении списка друзей';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Get friends list error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при получении списка друзей');
+    }
+  }
+
+  async checkFriendshipStatus(friendId: number): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/friends/${friendId}/status`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Ошибка при проверке статуса дружбы';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Check friendship status error:', error);
+      throw error instanceof Error 
+        ? error 
+        : new Error('Ошибка при проверке статуса дружбы');
     }
   }
 }
 
 export const userService = new UserService();
-export type { User, LoginData, RegisterData, UpdateUserData }; 
+export type { User, LoginData, RegisterData, UpdateUserData, FriendResponse, FriendList }; 

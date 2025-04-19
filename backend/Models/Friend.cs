@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
 {
+    [Table("friends")]
     public class Friend
     {
         [Key]
@@ -16,8 +17,7 @@ namespace backend.Models
         public int FriendId { get; set; }
         
         [Required]
-        [StringLength(20)]
-        public string Status { get; set; } = "pending"; // pending, accepted, blocked
+        public FriendStatus Status { get; set; }
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -27,5 +27,13 @@ namespace backend.Models
         
         [ForeignKey("FriendId")]
         public User FriendUser { get; set; }
+    }
+
+    public enum FriendStatus
+    {
+        Pending = 0,
+        Accepted = 1,
+        Declined = 2,
+        Blocked = 3
     }
 } 

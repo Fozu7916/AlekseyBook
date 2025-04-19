@@ -45,18 +45,31 @@ namespace backend.Data
                 entity.HasIndex(e => e.Email).IsUnique();
             });
 
-            // Настройка связей для друзей
-            modelBuilder.Entity<Friend>()
-                .HasOne(f => f.User)
-                .WithMany()
-                .HasForeignKey(f => f.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Friend>(entity =>
+            {
+                entity.ToTable("friends");
 
-            modelBuilder.Entity<Friend>()
-                .HasOne(f => f.FriendUser)
-                .WithMany()
-                .HasForeignKey(f => f.FriendId)
-                .OnDelete(DeleteBehavior.Restrict);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.FriendId).HasColumnName("friend_id");
+                entity.Property(e => e.Status).HasColumnName("status");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+                // Настройка связей для друзей
+                entity.HasOne(f => f.User)
+                    .WithMany()
+                    .HasForeignKey(f => f.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(f => f.FriendUser)
+                    .WithMany()
+                    .HasForeignKey(f => f.FriendId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Добавляем уникальный индекс для пары пользователей
+                entity.HasIndex(f => new { f.UserId, f.FriendId }).IsUnique();
+            });
 
             // Настройка связей для сообществ
             modelBuilder.Entity<Community>()

@@ -39,6 +39,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Register UserService
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IFriendService, FriendService>();
 
 // Add CORS
 builder.Services.AddCors(options =>

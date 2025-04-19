@@ -680,4 +680,32 @@
 
 .message-button:hover {
   background-color: #36393f;
+}
+
+.friend-request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.friend-button.sent {
+  background-color: #4f545c;
+  cursor: not-allowed;
+}
+
+.friend-button.accept {
+  background-color: #43b581;
+}
+
+.friend-button.accept:hover {
+  background-color: #3ca374;
+}
+
+.friend-button.decline,
+.friend-button.remove {
+  background-color: #f04747;
+}
+
+.friend-button.decline:hover,
+.friend-button.remove:hover {
+  background-color: #d84040;
 } 

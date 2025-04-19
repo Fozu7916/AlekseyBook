@@ -49,6 +49,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isFriend, setIsFriend] = useState(false);
+  const [friendRequestSent, setFriendRequestSent] = useState(false);
+  const [friendRequestReceived, setFriendRequestReceived] = useState(false);
   const [editForm, setEditForm] = useState({
     status: '',
     bio: ''
@@ -141,11 +144,18 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         if (!username) return;
+        
+        // Сначала получаем текущего пользователя
+        const currentUserData = await userService.getCurrentUser();
+        setCurrentUser(currentUserData);
+        
+        // Затем получаем данные профиля
         const userData = await userService.getUserByUsername(username);
         setUser(userData);
         setEditForm({
@@ -153,8 +163,24 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           bio: userData.bio || ''
         });
         
-        const currentUser = await userService.getCurrentUser();
-        setIsOwner(currentUser?.username === username);
+        const isOwner = currentUserData?.username === username;
+        setIsOwner(isOwner);
+
+        // Проверяем статус дружбы только если пользователь авторизован и это не его профиль
+        if (currentUserData && !isOwner) {
+          try {
+            const friendsList = await userService.getFriendsList();
+            setIsFriend(friendsList.friends.some(friend => friend.id === userData.id));
+            setFriendRequestSent(friendsList.sentRequests.some(friend => friend.id === userData.id));
+            setFriendRequestReceived(friendsList.pendingRequests.some(friend => friend.id === userData.id));
+          } catch (err) {
+            console.error('Ошибка при получении списка друзей:', err);
+            // Не показываем ошибку пользователю, просто скрываем кнопки друзей
+            setIsFriend(false);
+            setFriendRequestSent(false);
+            setFriendRequestReceived(false);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ошибка при загрузке профиля');
       } finally {
@@ -271,8 +297,49 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     setNewPostContent("");
   };
 
-  const handleAddFriend = () => {
-    // Implementation of adding a friend
+  const handleAddFriend = async () => {
+    try {
+      if (!user) return;
+      await userService.sendFriendRequest(user.id);
+      setFriendRequestSent(true);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при добавлении в друзья');
+    }
+  };
+
+  const handleAcceptFriend = async () => {
+    try {
+      if (!user) return;
+      await userService.acceptFriendRequest(user.id);
+      setFriendRequestReceived(false);
+      setIsFriend(true);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при принятии запроса в друзья');
+    }
+  };
+
+  const handleDeclineFriend = async () => {
+    try {
+      if (!user) return;
+      await userService.declineFriendRequest(user.id);
+      setFriendRequestReceived(false);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при отклонении запроса в друзья');
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    try {
+      if (!user) return;
+      await userService.removeFriend(user.id);
+      setIsFriend(false);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при удалении из друзей');
+    }
   };
 
   const handleSendMessage = () => {
@@ -350,29 +417,50 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             </div>
           ) : (
             <>
-              <div className="profile-status">{user.status || 'Онлайн'}</div>
-              <div className="profile-bio">{user.bio || '..'}</div>
+              <div className="profile-status">{user.status}</div>
+              <div className="profile-bio">{user.bio}</div>
               {user.lastLogin && (
                 <div className="profile-last-seen">
                   <span>Последний вход:</span>
                   <span>{new Date(user.lastLogin).toLocaleDateString()}</span>
                 </div>
               )}
-              {isOwner && (
+              {isOwner ? (
                 <button className="edit-profile-button" onClick={handleEditClick}>
                   Редактировать профиль
                 </button>
-              )}
-              {!isOwner && (
+              ) : currentUser ? (
                 <div className="profile-actions">
-                  <button className="friend-button" onClick={() => handleAddFriend()}>
-                    Добавить в друзья
-                  </button>
-                  <button className="message-button" onClick={() => handleSendMessage()}>
+                  {!isFriend && !friendRequestSent && !friendRequestReceived && (
+                    <button className="friend-button" onClick={handleAddFriend}>
+                      Добавить в друзья
+                    </button>
+                  )}
+                  {friendRequestSent && (
+                    <button className="friend-button sent" disabled>
+                      Запрос отправлен
+                    </button>
+                  )}
+                  {friendRequestReceived && (
+                    <div className="friend-request-actions">
+                      <button className="friend-button accept" onClick={handleAcceptFriend}>
+                        Принять запрос
+                      </button>
+                      <button className="friend-button decline" onClick={handleDeclineFriend}>
+                        Отклонить
+                      </button>
+                    </div>
+                  )}
+                  {isFriend && (
+                    <button className="friend-button remove" onClick={handleRemoveFriend}>
+                      Удалить из друзей
+                    </button>
+                  )}
+                  <button className="message-button" onClick={() => navigate(`/messages/${user.id}`)}>
                     Написать сообщение
                   </button>
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </div>
