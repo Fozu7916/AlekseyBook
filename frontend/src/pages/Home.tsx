@@ -65,7 +65,7 @@ const Home: React.FC = () => {
     music: <MusicTab isActive={activeTab === 'music'} />,
     games: <SettingsTab isActive={activeTab === 'games'} />,
     other: <NotificationsTab isActive={activeTab === 'other'} />,
-    profile: <ProfileTab isActive={activeTab === 'profile'} username={urlUsername || user?.username || ''} />
+    profile: <ProfileTab isActive={activeTab === 'profile'} username={urlUsername || user?.username || ''} key={urlUsername || user?.username} />
   };
 
   return (
