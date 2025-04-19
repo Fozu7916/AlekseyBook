@@ -3,234 +3,193 @@ import { useNavigate, useParams } from 'react-router-dom';
 import './Tabs.css';
 import './MessagesTab.css';
 import { TabProps } from './types';
-import { messageService, Chat, Message } from '../../services/messageService';
-import { useAuth } from '../../contexts/AuthContext';
-import { userService } from '../../services/userService';
+import { userService, User, Message, ChatPreview } from '../../services/userService';
 
-interface MessagesTabProps extends TabProps {
-  userId?: string;
-}
-
-const MessagesTab: React.FC<MessagesTabProps> = ({ isActive }) => {
-  const { userId } = useParams<{ userId?: string }>();
-  const [chats, setChats] = useState<Chat[]>([]);
+const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
+  const [chats, setChats] = useState<ChatPreview[]>([]);
+  const [selectedChat, setSelectedChat] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
+  const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
 
-  // Загрузка списка чатов
   useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        setIsLoading(true);
-        const chatsList = await messageService.getChats();
-        setChats(chatsList);
-        
-        // Если есть userId в параметрах, создаем или находим соответствующий чат
-        if (userId) {
-          const existingChat = chatsList.find(c => c.userId === parseInt(userId));
-          if (existingChat) {
-            setSelectedChat(existingChat);
-          } else {
-            // Если чат не существует, получаем информацию о пользователе и создаем новый чат
-            try {
-              const userInfo = await userService.getUserById(parseInt(userId));
-              const newChat: Chat = {
-                userId: userInfo.id,
-                username: userInfo.username,
-                avatarUrl: userInfo.avatarUrl,
-                unreadCount: 0
-              };
-              setChats(prev => [...prev, newChat]);
-              setSelectedChat(newChat);
-            } catch (err) {
-              setError('Пользователь не найден');
-            }
-          }
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ошибка при загрузке чатов');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (isActive) {
-      fetchChats();
+      loadChats();
+      if (userId) {
+        loadUserAndChat(parseInt(userId));
+      }
     }
   }, [isActive, userId]);
 
-  // Загрузка сообщений выбранного чата
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!selectedChat) return;
-
-      try {
-        const messagesList = await messageService.getMessages(selectedChat.userId);
-        setMessages(messagesList);
-        // Помечаем сообщения как прочитанные
-        await messageService.markAsRead(selectedChat.userId);
-        // Обновляем количество непрочитанных в списке чатов
-        setChats(prev => prev.map(chat => 
-          chat.userId === selectedChat.userId 
-            ? { ...chat, unreadCount: 0 }
-            : chat
-        ));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ошибка при загрузке сообщений');
-      }
-    };
-
     if (selectedChat) {
-      fetchMessages();
+      loadMessages(selectedChat.id);
+      markMessagesAsRead(selectedChat.id);
     }
   }, [selectedChat]);
 
-  // Прокрутка к последнему сообщению
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [messages]);
+
+  const loadChats = async () => {
+    try {
+      setIsLoading(true);
+      const userChats = await userService.getUserChats();
+      setChats(userChats);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке чатов');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadUserAndChat = async (userId: number) => {
+    try {
+      const user = await userService.getUserById(userId);
+      setSelectedChat(user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке пользователя');
+    }
+  };
+
+  const loadMessages = async (userId: number) => {
+    try {
+      const chatMessages = await userService.getChatMessages(userId);
+      setMessages(chatMessages.reverse());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке сообщений');
+    }
+  };
+
+  const markMessagesAsRead = async (userId: number) => {
+    try {
+      await userService.markMessagesAsRead(userId);
+      // Обновляем список чатов, чтобы обновить счетчики непрочитанных сообщений
+      loadChats();
+    } catch (err) {
+      console.error('Ошибка при отметке сообщений как прочитанных:', err);
+    }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedChat || !newMessage.trim()) return;
 
     try {
-      const message = await messageService.sendMessage(selectedChat.userId, newMessage.trim());
+      const message = await userService.sendMessage(selectedChat.id, newMessage.trim());
       setMessages(prev => [...prev, message]);
       setNewMessage('');
-      
-      // Обновляем последнее сообщение в списке чатов
-      setChats(prev => prev.map(chat => 
-        chat.userId === selectedChat.userId 
-          ? { ...chat, lastMessage: message }
-          : chat
-      ));
+      // Обновляем список чатов, чтобы обновить последнее сообщение
+      loadChats();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при отправке сообщения');
     }
   };
 
-  const handleChatSelect = (chat: Chat) => {
-    setSelectedChat(chat);
-    setError(null);
-    navigate(`/messages/${chat.userId}`);
+  const handleChatSelect = (user: User) => {
+    setSelectedChat(user);
+    navigate(`/messages/${user.id}`);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'вчера';
-    } else {
-      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-    }
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   if (!isActive) return null;
 
   return (
-    <div className="tab active">
-      <div className="messages-container">
-        <div className="chats-list">
-          <div className="chats-header">
-            <h2>Сообщения</h2>
-          </div>
-          {isLoading ? (
-            <div className="loading-message">Загрузка...</div>
-          ) : (
-            <div className="chats">
-              {chats.map(chat => (
-                <div 
-                  key={chat.userId}
-                  className={`chat-item ${selectedChat?.userId === chat.userId ? 'active' : ''}`}
-                  onClick={() => handleChatSelect(chat)}
-                >
-                  <img 
-                    src={chat.avatarUrl ? `http://localhost:5038${chat.avatarUrl}` : '/images/default-avatar.svg'} 
-                    alt={chat.username} 
-                    className="chat-avatar"
-                  />
-                  <div className="chat-info">
-                    <div className="chat-name">{chat.username}</div>
-                    {chat.lastMessage && (
-                      <div className="chat-last-message">
-                        {chat.lastMessage.senderId === user?.id ? 'Вы: ' : ''}
-                        {chat.lastMessage.content}
-                      </div>
-                    )}
+    <div className="messages-container">
+      <div className="chats-list">
+        <div className="chats-header">
+          <h2>Сообщения</h2>
+        </div>
+        {isLoading ? (
+          <div className="loading-message">Загрузка чатов...</div>
+        ) : (
+          <div className="chats">
+            {chats.map(chat => (
+              <div
+                key={chat.user.id}
+                className={`chat-item ${selectedChat?.id === chat.user.id ? 'active' : ''}`}
+                onClick={() => handleChatSelect(chat.user)}
+              >
+                <img
+                  src={chat.user.avatarUrl ? `http://localhost:5038${chat.user.avatarUrl}` : '/images/default-avatar.svg'}
+                  alt={chat.user.username}
+                  className="chat-avatar"
+                />
+                <div className="chat-info">
+                  <div className="chat-name">{chat.user.username}</div>
+                  <div className="chat-last-message">
+                    {chat.lastMessage?.content || 'Нет сообщений'}
                   </div>
-                  {chat.unreadCount > 0 && (
-                    <div className="unread-count">{chat.unreadCount}</div>
-                  )}
+                </div>
+                {chat.unreadCount > 0 && (
+                  <div className="unread-count">{chat.unreadCount}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="chat-content">
+        {selectedChat ? (
+          <>
+            <div className="chat-header">
+              <img
+                src={selectedChat.avatarUrl ? `http://localhost:5038${selectedChat.avatarUrl}` : '/images/default-avatar.svg'}
+                alt={selectedChat.username}
+                className="chat-avatar"
+              />
+              <div className="chat-info">
+                <div className="chat-name">{selectedChat.username}</div>
+                <div className="chat-status">{selectedChat.status || 'Нет статуса'}</div>
+              </div>
+            </div>
+
+            <div className="messages-list">
+              {messages.map(message => (
+                <div
+                  key={message.id}
+                  className={`message ${message.sender.id === selectedChat.id ? 'received' : 'sent'}`}
+                >
+                  <div className="message-content">{message.content}</div>
+                  <div className="message-time">
+                    {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
 
-        <div className="messages-content">
-          {selectedChat ? (
-            <>
-              <div className="messages-header">
-                <img 
-                  src={selectedChat.avatarUrl ? `http://localhost:5038${selectedChat.avatarUrl}` : '/images/default-avatar.svg'} 
-                  alt={selectedChat.username} 
-                  className="user-avatar"
-                />
-                <div className="user-info">
-                  <div className="user-name">{selectedChat.username}</div>
-                </div>
-              </div>
-
-              <div className="messages-list">
-                {messages.map(message => (
-                  <div 
-                    key={message.id} 
-                    className={`message ${message.senderId === user?.id ? 'own' : ''}`}
-                  >
-                    <div className="message-content">
-                      {message.content}
-                      <span className="message-time">{formatDate(message.createdAt)}</span>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <form className="message-input" onSubmit={handleSendMessage}>
-                <textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Введите сообщение..."
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage(e);
-                    }
-                  }}
-                />
-                <button type="submit" disabled={!newMessage.trim()}>
-                  Отправить
-                </button>
-              </form>
-            </>
-          ) : (
-            <div className="no-chat-selected">
-              <p>Выберите чат для начала общения</p>
-            </div>
-          )}
-        </div>
+            <form className="message-input" onSubmit={handleSendMessage}>
+              <textarea
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                placeholder="Введите сообщение..."
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
+              />
+              <button type="submit" disabled={!newMessage.trim()}>
+                Отправить
+              </button>
+            </form>
+          </>
+        ) : (
+          <div className="no-chat-selected">
+            Выберите чат для начала общения
+          </div>
+        )}
       </div>
     </div>
   );

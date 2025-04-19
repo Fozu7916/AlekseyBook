@@ -12,6 +12,7 @@ namespace backend.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Friend> Friends { get; set; }
+        public DbSet<Message> Messages { get; set; }
         public DbSet<Community> Communities { get; set; }
         public DbSet<CommunityMember> CommunityMembers { get; set; }
         public DbSet<CommunityPost> CommunityPosts { get; set; }
@@ -56,7 +57,6 @@ namespace backend.Data
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
 
-                // Настройка связей для друзей
                 entity.HasOne(f => f.User)
                     .WithMany()
                     .HasForeignKey(f => f.UserId)
@@ -67,8 +67,29 @@ namespace backend.Data
                     .HasForeignKey(f => f.FriendId)
                     .OnDelete(DeleteBehavior.Restrict);
 
-                // Добавляем уникальный индекс для пары пользователей
                 entity.HasIndex(f => new { f.UserId, f.FriendId }).IsUnique();
+            });
+
+            modelBuilder.Entity<Message>(entity =>
+            {
+                entity.ToTable("messages");
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.SenderId).HasColumnName("sender_id");
+                entity.Property(e => e.ReceiverId).HasColumnName("receiver_id");
+                entity.Property(e => e.Content).HasColumnName("content");
+                entity.Property(e => e.IsRead).HasColumnName("is_read");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+                entity.HasOne(m => m.Sender)
+                    .WithMany()
+                    .HasForeignKey(m => m.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(m => m.Receiver)
+                    .WithMany()
+                    .HasForeignKey(m => m.ReceiverId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Настройка связей для сообществ
