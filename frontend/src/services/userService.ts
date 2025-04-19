@@ -415,6 +415,10 @@ class UserService {
         : new Error('Ошибка при проверке статуса дружбы');
     }
   }
+
+  async getUserById(userId: number): Promise<User> {
+    return this.request(`/users/${userId}`);
+  }
 }
 
 export const userService = new UserService();

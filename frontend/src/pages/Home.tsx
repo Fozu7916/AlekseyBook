@@ -19,8 +19,8 @@ const getTabFromPath = (pathname: string): TabType => {
   switch (path) {
     case 'main':
       return 'main';
-    case 'communities':
-      return 'communities';
+    case 'messages':
+      return 'message';
     case 'friends':
       return 'friends';
     case 'music':
@@ -51,12 +51,16 @@ const Home: React.FC = () => {
     setActiveTab(tab);
     if (tab === 'profile' && user) {
       navigate(`/profile/${user.username}`);
+    } else if (tab === 'message') {
+      navigate('/messages');
+    } else {
+      navigate(`/${tab}`);
     }
   };
 
   const tabs: Record<TabType, React.ReactNode> = {
     main: <MainTab isActive={activeTab === 'main'} />,
-    communities: <MessagesTab isActive={activeTab === 'communities'} />,
+    message: <MessagesTab isActive={activeTab === 'message'} />,
     friends: <FriendsTab isActive={activeTab === 'friends'} />,
     music: <MusicTab isActive={activeTab === 'music'} />,
     games: <SettingsTab isActive={activeTab === 'games'} />,

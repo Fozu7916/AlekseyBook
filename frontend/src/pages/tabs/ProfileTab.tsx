@@ -321,7 +321,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   };
 
   const handleSendMessage = () => {
-    // Implementation of sending a message
+    if (user) {
+      navigate(`/messages/${user.id}`);
+    }
   };
 
   if (!isActive) return null;
@@ -434,7 +436,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                       Удалить из друзей
                     </button>
                   )}
-                  <button className="message-button" onClick={() => navigate(`/messages/${user.id}`)}>
+                  <button className="message-button" onClick={handleSendMessage}>
                     Написать сообщение
                   </button>
                 </div>
@@ -555,7 +557,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               </div>
             ))}
             {communities.length > 3 && (
-              <div className="view-all-button" onClick={() => navigate('/communities')}>
+              <div className="view-all-button" onClick={() => navigate('/messages')}>
                 Показать все
               </div>
             )}

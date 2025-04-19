@@ -13,7 +13,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ activeTab, onTabChange }) => 
 
   const menuItems = [
     { id: 'main' as TabType, label: 'Новости', path: '/main' },
-    { id: 'communities' as TabType, label: 'Сообщества', path: '/communities' },
+    { id: 'messages' as TabType, label: 'Сообщения', path: '/messages' },
     { id: 'friends' as TabType, label: 'Друзья', path: '/friends' },
     { id: 'music' as TabType, label: 'Музыка', path: '/music' },
     { id: 'games' as TabType, label: 'Игры', path: '/games' },
