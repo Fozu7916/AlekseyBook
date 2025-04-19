@@ -271,6 +271,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     setNewPostContent("");
   };
 
+  const handleAddFriend = () => {
+    // Implementation of adding a friend
+  };
+
+  const handleSendMessage = () => {
+    // Implementation of sending a message
+  };
+
   if (!isActive) return null;
 
   if (isLoading) {
@@ -294,7 +302,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           style={{ cursor: isOwner ? 'pointer' : 'default' }}
         >
           <img 
-            src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/default-avatar.png'} 
+            src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
             alt={user.username} 
           />
           {isUploading && <div className="avatar-uploading">Загрузка...</div>}
@@ -342,8 +350,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             </div>
           ) : (
             <>
-              <div className="profile-status">{user.status}</div>
-              {user.bio && <div className="profile-bio">{user.bio}</div>}
+              <div className="profile-status">{user.status || 'Онлайн'}</div>
+              <div className="profile-bio">{user.bio || '..'}</div>
               {user.lastLogin && (
                 <div className="profile-last-seen">
                   <span>Последний вход:</span>
@@ -355,6 +363,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                   Редактировать профиль
                 </button>
               )}
+              {!isOwner && (
+                <div className="profile-actions">
+                  <button className="friend-button" onClick={() => handleAddFriend()}>
+                    Добавить в друзья
+                  </button>
+                  <button className="message-button" onClick={() => handleSendMessage()}>
+                    Написать сообщение
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -362,35 +380,33 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
       <div className="profile-main">
         <div className="wall-section">
-          {isOwner && (
-            <form className="post-form" onSubmit={handlePostSubmit}>
-              <textarea
-                placeholder="Что у вас нового?"
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                maxLength={1000}
-              />
-              <div className="post-form-footer">
-                <span className="character-count">
-                  {newPostContent.length}/1000
-                </span>
-                <button 
-                  type="submit" 
-                  disabled={!newPostContent.trim()}
-                  className="post-submit-button"
-                >
-                  Опубликовать
-                </button>
-              </div>
-            </form>
-          )}
+          <form className="post-form" onSubmit={handlePostSubmit}>
+            <textarea
+              placeholder={isOwner ? "Что у вас нового?" : `Написать на стене ${user.username}...`}
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+              maxLength={1000}
+            />
+            <div className="post-form-footer">
+              <span className="character-count">
+                {newPostContent.length}/1000
+              </span>
+              <button 
+                type="submit" 
+                disabled={!newPostContent.trim()}
+                className="post-submit-button"
+              >
+                Опубликовать
+              </button>
+            </div>
+          </form>
 
           <div className="posts-list">
             {posts.map(post => (
               <div key={post.id} className="post-card">
                 <div className="post-header">
                   <img 
-                    src={post.authorAvatar || '/default-avatar.png'} 
+                    src={post.authorAvatar || '/images/default-avatar.svg'} 
                     alt={post.authorName} 
                     className="post-avatar"
                   />
@@ -430,7 +446,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             {friends.slice(0, 3).map(friend => (
               <div key={friend.id} className="friend-card">
                 <img 
-                  src={friend.avatarUrl || '/default-avatar.png'} 
+                  src={friend.avatarUrl || '/images/default-avatar.svg'} 
                   alt={friend.username} 
                   className="friend-avatar"
                 />

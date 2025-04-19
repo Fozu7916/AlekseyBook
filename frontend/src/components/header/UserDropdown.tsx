@@ -50,6 +50,11 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ user, onLogout, onProfileCl
         className="user-name"
         onClick={() => setIsOpen(!isOpen)}
       >
+        <img 
+          src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+          alt={user.username}
+          className="user-avatar"
+        />
         {user.username}
         <div className="dropdown-arrow">▼</div>
       </div>
