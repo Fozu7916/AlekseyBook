@@ -11,7 +11,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [selectedChat, setSelectedChat] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -20,16 +20,48 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const lastChatsUpdateRef = useRef<number>(0);
   const { userId } = useParams<{ userId?: string }>();
   const navigate = useNavigate();
   const MESSAGES_PER_PAGE = 40;
+  const CHATS_UPDATE_INTERVAL = 3000; // 3 секунды
 
+  const loadChats = useCallback(async (force: boolean = false) => {
+    try {
+      // Проверяем, прошло ли достаточно времени с последнего обновления
+      const now = Date.now();
+      if (!force && now - lastChatsUpdateRef.current < CHATS_UPDATE_INTERVAL) {
+        return;
+      }
+
+      // Не показываем состояние загрузки, если уже есть чаты
+      if (chats.length === 0) {
+        setIsLoading(true);
+      }
+      
+      const userChats = await userService.getUserChats();
+      lastChatsUpdateRef.current = now;
+      
+      // Сравниваем новые чаты с текущими, обновляем только при изменениях
+      setChats(prev => {
+        const hasChanges = JSON.stringify(prev) !== JSON.stringify(userChats);
+        return hasChanges ? userChats : prev;
+      });
+    } catch (err) {
+      console.error('Ошибка при загрузке чатов:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке чатов');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [chats.length]);
+
+  // Инициализация чата
   useEffect(() => {
     if (isActive) {
       const setupChat = async () => {
         try {
           await chatService.startConnection();
-          await loadChats();
+          await loadChats(true); // Принудительная первая загрузка
           if (userId) {
             await loadUserAndChat(parseInt(userId));
           }
@@ -41,7 +73,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
       setupChat();
 
-      const interval = setInterval(() => {
+      const connectionCheckInterval = setInterval(() => {
         if (!chatService.isConnected()) {
           console.log('Проверка подключения: переподключаемся...');
           setupChat();
@@ -59,17 +91,21 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
           updateMessages();
         }
         
-        // В любом случае обновляем список чатов
-        loadChats();
+        // Обновляем список чатов с небольшой задержкой
+        setTimeout(() => loadChats(true), 500);
       });
 
+      // Периодическое обновление списка чатов
+      const chatUpdateInterval = setInterval(() => loadChats(false), CHATS_UPDATE_INTERVAL);
+
       return () => {
-        clearInterval(interval);
+        clearInterval(connectionCheckInterval);
+        clearInterval(chatUpdateInterval);
         chatService.stopConnection();
         unsubscribeMessage();
       };
     }
-  }, [isActive, selectedChat]);
+  }, [isActive, selectedChat, loadChats, userId]);
 
   useEffect(() => {
     if (selectedChat) {
@@ -113,18 +149,6 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       return () => container.removeEventListener('scroll', handleScroll);
     }
   }, [handleScroll]);
-
-  const loadChats = async () => {
-    try {
-      setIsLoading(true);
-      const userChats = await userService.getUserChats();
-      setChats(userChats);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при загрузке чатов');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const loadUserAndChat = async (userId: number) => {
     try {
@@ -305,7 +329,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         <div className="chats-header">
           <h2>Сообщения</h2>
         </div>
-        {isLoading ? (
+        {isLoading && chats.length === 0 ? (
           <div className="loading-message">Загрузка чатов...</div>
         ) : (
           <div className="chats">
