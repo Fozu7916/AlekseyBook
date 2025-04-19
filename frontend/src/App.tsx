@@ -15,6 +15,7 @@ function App() {
             <Route path="/main" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/messages" element={<Home />} />
+            <Route path="/messages/:userId" element={<Home />} />
             <Route path="/friends" element={<Home />} />
             <Route path="/music" element={<Home />} />
             <Route path="/games" element={<Home />} />

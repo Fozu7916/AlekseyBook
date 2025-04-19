@@ -44,7 +44,8 @@ const Home: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    setActiveTab(getTabFromPath(location.pathname));
+    const newTab = getTabFromPath(location.pathname);
+    setActiveTab(newTab);
   }, [location.pathname]);
 
   const handleTabChange = (tab: TabType) => {

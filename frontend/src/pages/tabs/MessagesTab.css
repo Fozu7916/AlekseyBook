@@ -1,6 +1,6 @@
 .messages-container {
   display: flex;
-  height: calc(100vh - 60px);
+  height: 80vh;
   background: #36393f;
 }
 

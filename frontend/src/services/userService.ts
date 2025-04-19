@@ -463,140 +463,28 @@ class UserService {
   }
 
   async sendMessage(receiverId: number, content: string): Promise<Message> {
-    try {
-      const response = await fetch(`${this.baseUrl}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.token}`
-        },
-        body: JSON.stringify({ receiverId, content })
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при отправке сообщения';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Send message error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при отправке сообщения');
-    }
+    return this.request('/messages', {
+      method: 'POST',
+      body: JSON.stringify({ receiverId, content })
+    });
   }
 
   async getChatMessages(otherUserId: number): Promise<Message[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/messages/chat/${otherUserId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при получении сообщений';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Get chat messages error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при получении сообщений');
-    }
+    return this.request(`/messages/chat/${otherUserId}`);
   }
 
   async getUserChats(): Promise<ChatPreview[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/messages/chats`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при получении списка чатов';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Get user chats error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при получении списка чатов');
-    }
+    return this.request('/messages/chats');
   }
 
   async markMessagesAsRead(otherUserId: number): Promise<void> {
-    try {
-      const response = await fetch(`${this.baseUrl}/messages/read/${otherUserId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при отметке сообщений как прочитанных';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-    } catch (error) {
-      console.error('Mark messages as read error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при отметке сообщений как прочитанных');
-    }
+    return this.request(`/messages/read/${otherUserId}`, {
+      method: 'POST'
+    });
   }
 
   async getUnreadMessagesCount(): Promise<number> {
-    try {
-      const response = await fetch(`${this.baseUrl}/messages/unread/count`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при получении количества непрочитанных сообщений';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Get unread messages count error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при получении количества непрочитанных сообщений');
-    }
+    return this.request('/messages/unread/count');
   }
 }
 

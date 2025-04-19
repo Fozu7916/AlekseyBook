@@ -29,6 +29,16 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     if (selectedChat) {
       loadMessages(selectedChat.id);
       markMessagesAsRead(selectedChat.id);
+
+      // Устанавливаем интервал для обновления сообщений
+      const interval = setInterval(() => {
+        if (selectedChat) {
+          loadMessages(selectedChat.id);
+          loadChats();
+        }
+      }, 3000); // Обновляем каждые 3 секунды
+
+      return () => clearInterval(interval);
     }
   }, [selectedChat]);
 
@@ -60,7 +70,12 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const loadMessages = async (userId: number) => {
     try {
       const chatMessages = await userService.getChatMessages(userId);
-      setMessages(chatMessages.reverse());
+      // Преобразуем время в локальное для каждого сообщения
+      const messagesWithLocalTime = chatMessages.map(msg => ({
+        ...msg,
+        createdAt: new Date(new Date(msg.createdAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
+      }));
+      setMessages(messagesWithLocalTime.reverse());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке сообщений');
     }
@@ -76,15 +91,49 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     }
   };
 
+  const formatMessageTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    // Получаем локальное время с учетом UTC
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    
+    // Форматируем время вручную
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedChat || !newMessage.trim()) return;
 
+    const messageContent = newMessage.trim();
+    setNewMessage('');
+
     try {
-      const message = await userService.sendMessage(selectedChat.id, newMessage.trim());
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
-      // Обновляем список чатов, чтобы обновить последнее сообщение
+      const currentUser = await userService.getCurrentUser();
+      if (!currentUser) throw new Error('Пользователь не авторизован');
+
+      // Создаем дату в локальном времени
+      const now = new Date();
+      const tempMessage: Message = {
+        id: Date.now(),
+        content: messageContent,
+        sender: currentUser,
+        receiver: selectedChat,
+        isRead: false,
+        createdAt: now.toISOString()
+      };
+
+      setMessages(prevMessages => [...prevMessages, tempMessage]);
+      scrollToBottom();
+
+      const sentMessage = await userService.sendMessage(selectedChat.id, messageContent);
+      
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === tempMessage.id ? sentMessage : msg
+        )
+      );
+
       loadChats();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при отправке сообщения');
@@ -161,7 +210,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
                 >
                   <div className="message-content">{message.content}</div>
                   <div className="message-time">
-                    {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatMessageTime(message.createdAt)}
                   </div>
                 </div>
               ))}
