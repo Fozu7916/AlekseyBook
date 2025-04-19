@@ -26,32 +26,58 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
   useEffect(() => {
     if (isActive) {
-      chatService.startConnection();
-      loadChats();
-      if (userId) {
-        loadUserAndChat(parseInt(userId));
-      }
+      const setupChat = async () => {
+        try {
+          await chatService.startConnection();
+          await loadChats();
+          if (userId) {
+            await loadUserAndChat(parseInt(userId));
+          }
+        } catch (err) {
+          console.error('Ошибка при инициализации чата:', err);
+          setError('Ошибка подключения к чату. Пробуем переподключиться...');
+        }
+      };
+
+      setupChat();
+
+      const interval = setInterval(() => {
+        if (!chatService.isConnected()) {
+          console.log('Проверка подключения: переподключаемся...');
+          setupChat();
+        }
+      }, 5000);
 
       // Подписываемся на новые сообщения
       const unsubscribeMessage = chatService.onMessage((message) => {
         console.log('Получено новое сообщение в компоненте:', message);
-        setMessages(prev => [...prev, message]);
+        
+        // Обновляем список сообщений, если сообщение относится к текущему чату
+        if (selectedChat && 
+            (message.sender.id === selectedChat.id || 
+             message.receiver.id === selectedChat.id)) {
+          updateMessages();
+        }
+        
+        // В любом случае обновляем список чатов
         loadChats();
       });
 
       return () => {
+        clearInterval(interval);
         chatService.stopConnection();
         unsubscribeMessage();
       };
     }
-  }, [isActive, userId]);
+  }, [isActive, selectedChat]);
 
   useEffect(() => {
     if (selectedChat) {
+      console.log('Выбран новый чат:', selectedChat.id);
       loadMessages(selectedChat.id, true);
       markMessagesAsRead(selectedChat.id);
 
-      console.log('Подписываюсь на события печатания для:', selectedChat.id);
+      // Подписываемся на события печатания
       const unsubscribe = chatService.onTypingStatus((userId, isTyping) => {
         console.log('Получен статус печатания:', userId, isTyping, 'текущий чат:', selectedChat.id);
         if (userId === selectedChat.id.toString()) {
@@ -60,7 +86,6 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       });
 
       return () => {
-        console.log('Отписываюсь от событий печатания для:', selectedChat.id);
         unsubscribe();
       };
     }
@@ -120,30 +145,27 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       }
 
       const chatMessages = await userService.getChatMessages(userId);
+      
+      // Сортируем сообщения по времени
       const sortedMessages = [...chatMessages].sort((a, b) => 
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       
-      const totalMessages = sortedMessages.length;
-      const end = totalMessages;
-      const start = Math.max(totalMessages - (page * MESSAGES_PER_PAGE), 0);
-      const pageMessages = sortedMessages.slice(start, end);
-      
-      const messagesWithLocalTime = pageMessages.map(msg => ({
+      // Преобразуем время в локальное
+      const messagesWithLocalTime = sortedMessages.map(msg => ({
         ...msg,
         createdAt: new Date(new Date(msg.createdAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
       }));
 
       setMessages(messagesWithLocalTime);
+      
       if (reset) {
         setTimeout(scrollToBottom, 100);
       }
 
-      setHasMore(start > 0);
-      if (!reset) {
-        setPage(prev => prev + 1);
-      }
+      setHasMore(false); // Временно отключаем пагинацию
     } catch (err) {
+      console.error('Ошибка при загрузке сообщений:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке сообщений');
     } finally {
       setIsLoading(false);
@@ -187,18 +209,49 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       const currentUser = await userService.getCurrentUser();
       if (!currentUser) throw new Error('Пользователь не авторизован');
 
-      // Отправляем сообщение на сервер
-      const sentMessage = await userService.sendMessage(selectedChat.id, messageContent);
-      setMessages(prev => [...prev, sentMessage]);
+      // Создаем временное сообщение
+      const tempMessage = {
+        id: Date.now(),
+        content: messageContent,
+        sender: currentUser,
+        receiver: selectedChat,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+
+      // Показываем сообщение сразу
+      setMessages(prev => [...prev, tempMessage]);
       setTimeout(scrollToBottom, 100);
 
+      // Отправляем сообщение через HTTP и SignalR
+      const [sentMessage] = await Promise.all([
+        userService.sendMessage(selectedChat.id, messageContent),
+        chatService.sendMessage(tempMessage).catch(err => {
+          console.error('Ошибка отправки через SignalR:', err);
+          return null;
+        })
+      ]);
+
+      // Заменяем временное сообщение на реальное только если получили ответ от сервера
+      if (sentMessage) {
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempMessage.id ? sentMessage : msg
+          )
+        );
+      }
+
     } catch (err) {
+      console.error('Ошибка при отправке сообщения:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при отправке сообщения');
+      // Удаляем временное сообщение в случае ошибки
+      setMessages(prev => prev.filter(msg => msg.id !== Date.now()));
     }
   };
 
-  const handleChatSelect = (user: User) => {
+  const handleChatSelect = async (user: User) => {
     setSelectedChat(user);
+    setMessages([]); // Очищаем сообщения перед загрузкой новых
     navigate(`/messages/${user.id}`);
   };
 
@@ -214,7 +267,6 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     
     if (selectedChat && !isTyping) {
       setIsTyping(true);
-      console.log('Отправляю статус печатания для:', selectedChat.id);
       chatService.sendTypingStatus(selectedChat.id.toString(), true);
     }
 
@@ -225,11 +277,25 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
       if (selectedChat) {
-        console.log('Отправляю статус остановки печатания для:', selectedChat.id);
         chatService.sendTypingStatus(selectedChat.id.toString(), false);
       }
     }, 3000);
   }, [selectedChat, isTyping]);
+
+  // Функция для обновления списка сообщений
+  const updateMessages = useCallback(async () => {
+    if (selectedChat) {
+      await loadMessages(selectedChat.id, false);
+    }
+  }, [selectedChat]);
+
+  // Автоматическое обновление сообщений каждые 10 секунд
+  useEffect(() => {
+    if (isActive && selectedChat) {
+      const interval = setInterval(updateMessages, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isActive, selectedChat, updateMessages]);
 
   if (!isActive) return null;
 
