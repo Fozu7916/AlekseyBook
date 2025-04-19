@@ -22,6 +22,7 @@ const Header: React.FC<HeaderProps> = ({ onProfileClick, onHomeClick }) => {
     <header className="App-header">
       <div className="header-container">
         <div className="header-main">
+          <img src="/images/logo.png" alt="Логотип" className="header-logo" />
           <button className="home-button" onClick={onHomeClick}>Перейти на главную</button>
         </div>
         <div className="header-user">

@@ -114,4 +114,10 @@ code {
 
 .register-button:hover {
   background: #4fa8d1;
+}
+
+.header-logo {
+  height: 2.5rem;
+  width: auto;
+  margin-right: 0.3rem;
 } 
