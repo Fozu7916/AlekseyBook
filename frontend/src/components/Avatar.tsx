@@ -8,7 +8,7 @@ interface AvatarProps {
   alt?: string;
 }
 
-export const Avatar = ({ avatarUrl, className = '', alt = 'Avatar' }: AvatarProps): React.ReactElement => {
+export const Avatar: React.FC<AvatarProps> = ({ avatarUrl, className = '', alt = 'Avatar' }) => {
   const fullAvatarUrl = avatarUrl 
     ? avatarUrl.startsWith('http') 
       ? avatarUrl 
