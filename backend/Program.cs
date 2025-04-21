@@ -17,15 +17,13 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(builder =>
     {
         builder.WithOrigins(
-                "http://localhost:3000",
+                "http://localhost:3000", 
                 "http://localhost:5173",
-                "https://alekseybook.netlify.app",
-                "https://sweet-trust-production.up.railway.app"
+                "https://*.netlify.app"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials()
-            .WithExposedHeaders("Content-Disposition");
+            .AllowCredentials();
     });
 });
 
@@ -38,23 +36,17 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
-                 builder.Configuration["Jwt:Key"];
-                 
-    if (string.IsNullOrEmpty(jwtKey))
-    {
-        throw new InvalidOperationException("JWT key is not configured");
-    }
-
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = Environment.GetEnvironmentVariable("API_URL") ?? builder.Configuration["Jwt:Issuer"],
-        ValidAudience = Environment.GetEnvironmentVariable("CLIENT_URL") ?? builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT:Key не настроен"))
+        )
     };
 
     options.Events = new JwtBearerEvents
@@ -64,8 +56,7 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             
-            if (!string.IsNullOrEmpty(accessToken) && 
-                (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/api")))
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
             {
                 context.Token = accessToken;
             }
@@ -75,29 +66,10 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") ?? 
-        builder.Configuration.GetConnectionString("DefaultConnection");
-
-    if (connectionString.StartsWith("mysql://"))
-    {
-        // Parse connection URL
-        var uri = new Uri(connectionString);
-        var userInfo = uri.UserInfo.Split(':');
-        var user = userInfo[0];
-        var password = userInfo[1];
-        var database = uri.AbsolutePath.TrimStart('/');
-        var host = uri.Host;
-        var port = uri.Port;
-
-        connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};";
-    }
-    
     options.UseMySql(
-        connectionString,
-        ServerVersion.AutoDetect(connectionString)
-    );
-});
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
+    ));
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
@@ -142,6 +114,8 @@ if (!Directory.Exists(wwwrootPath))
     Directory.CreateDirectory(wwwrootPath);
 }
 
+app.UseStaticFiles();
+
 var uploadsPath = Path.Combine(wwwrootPath, "uploads");
 if (!Directory.Exists(uploadsPath))
 {
@@ -150,15 +124,8 @@ if (!Directory.Exists(uploadsPath))
 
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(wwwrootPath),
-    RequestPath = "",
-    OnPrepareResponse = ctx =>
-    {
-        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
-        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-        // Кэширование на 1 час
-        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=3600");
-    }
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
 });
 
 app.UseAuthentication();
@@ -166,9 +133,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
-
-// Добавляем health check endpoint
-app.MapGet("/health", () => Results.Ok("Healthy"));
 
 app.Run();
 

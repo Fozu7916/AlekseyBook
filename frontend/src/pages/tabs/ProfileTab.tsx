@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
 import './ProfileTab.css';
-import { Avatar } from '../../components/Avatar';
 
-interface ProfileTabProps {
-  isActive: boolean;
+interface ProfileTabProps extends TabProps {
   username: string;
 }
 
@@ -349,9 +347,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           onClick={handleAvatarClick} 
           style={{ cursor: isOwner ? 'pointer' : 'default' }}
         >
-          <Avatar 
-            avatarUrl={user.avatarUrl}
-            alt={user.username}
+          <img 
+            src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+            alt={user.username} 
           />
           {isUploading && <div className="avatar-uploading">Загрузка...</div>}
           {isOwner && <div className="avatar-edit-hint">Нажмите для изменения</div>}
@@ -474,9 +472,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             {posts.map(post => (
               <div key={post.id} className="post-card">
                 <div className="post-header">
-                  <Avatar
-                    avatarUrl={post.authorAvatar}
-                    alt={post.authorName}
+                  <img 
+                    src={post.authorAvatar || '/images/default-avatar.svg'} 
+                    alt={post.authorName} 
                     className="post-avatar"
                   />
                   <div className="post-meta">
@@ -518,9 +516,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               <>
                 {friends.slice(0, 3).map(friend => (
                   <div key={friend.id} className="friend-card" onClick={() => navigate(`/profile/${friend.username}`)}>
-                    <Avatar
-                      avatarUrl={friend.avatarUrl}
-                      alt={friend.username}
+                    <img 
+                      src={friend.avatarUrl ? `http://localhost:5038${friend.avatarUrl}` : '/images/default-avatar.svg'} 
+                      alt={friend.username} 
                       className="friend-avatar"
                     />
                     <div className="friend-info">

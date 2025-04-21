@@ -5,7 +5,6 @@ import './MessagesTab.css';
 import { TabProps } from './types';
 import { userService, User, Message, ChatPreview } from '../../services/userService';
 import { chatService } from '../../services/chatService';
-import { Avatar } from '../../components/Avatar';
 
 const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -471,8 +470,8 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
                 className={`chat-item ${selectedChat?.id === chat.user.id ? 'active' : ''}`}
                 onClick={() => handleChatSelect(chat.user)}
               >
-                <Avatar
-                  avatarUrl={chat.user.avatarUrl}
+                <img
+                  src={chat.user.avatarUrl ? `http://localhost:5038${chat.user.avatarUrl}` : '/images/default-avatar.svg'}
                   alt={chat.user.username}
                   className="chat-avatar"
                 />
@@ -495,8 +494,8 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         {selectedChat ? (
           <>
             <div className="chat-header">
-              <Avatar
-                avatarUrl={selectedChat.avatarUrl}
+              <img
+                src={selectedChat.avatarUrl ? `http://localhost:5038${selectedChat.avatarUrl}` : '/images/default-avatar.svg'}
                 alt={selectedChat.username}
                 className="chat-avatar"
               />

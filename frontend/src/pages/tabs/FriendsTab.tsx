@@ -4,7 +4,6 @@ import './Tabs.css';
 import './FriendsTab.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
-import { Avatar } from '../../components/Avatar';
 
 const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const [friends, setFriends] = useState<User[]>([]);
@@ -119,9 +118,9 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                 friends.map(friend => (
                   <div key={friend.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${friend.username}`)}>
-                      <Avatar 
-                        avatarUrl={friend.avatarUrl}
-                        alt={friend.username}
+                      <img 
+                        src={friend.avatarUrl ? `http://localhost:5038${friend.avatarUrl}` : '/images/default-avatar.svg'} 
+                        alt={friend.username} 
                         className="friend-avatar"
                       />
                       <div className="friend-details">
@@ -155,9 +154,9 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                 pendingRequests.map(user => (
                   <div key={user.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
-                      <Avatar 
-                        avatarUrl={user.avatarUrl}
-                        alt={user.username}
+                      <img 
+                        src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+                        alt={user.username} 
                         className="friend-avatar"
                       />
                       <div className="friend-details">
@@ -191,9 +190,9 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                 sentRequests.map(user => (
                   <div key={user.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
-                      <Avatar 
-                        avatarUrl={user.avatarUrl}
-                        alt={user.username}
+                      <img 
+                        src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+                        alt={user.username} 
                         className="friend-avatar"
                       />
                       <div className="friend-details">
