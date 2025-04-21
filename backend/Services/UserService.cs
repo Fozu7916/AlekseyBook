@@ -301,18 +301,12 @@ namespace backend.Services
 
         private static UserResponseDto MapToDto(User user)
         {
-            var avatarUrl = user.AvatarUrl;
-            if (!string.IsNullOrEmpty(avatarUrl) && !avatarUrl.StartsWith("http"))
-            {
-                avatarUrl = $"https://sweet-trust-production.up.railway.app{avatarUrl}";
-            }
-
             return new UserResponseDto
             {
                 Id = user.Id,
                 Username = user.Username,
                 Email = user.Email,
-                AvatarUrl = avatarUrl,
+                AvatarUrl = user.AvatarUrl,
                 Status = user.Status,
                 CreatedAt = user.CreatedAt,
                 LastLogin = user.LastLogin,
