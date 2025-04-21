@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { userService } from '../../services/userService';
 import './Auth.css';
 
@@ -20,11 +20,10 @@ const Auth: React.FC = () => {
     setIsLoading(true);
 
     try {
-      let response;
       if (isRegister) {
-        response = await userService.register(formData);
+        await userService.register(formData);
       } else {
-        response = await userService.login({
+        await userService.login({
           email: formData.email,
           password: formData.password
         });
