@@ -148,15 +148,16 @@ if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
 }
 
-app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads",
+    FileProvider = new PhysicalFileProvider(wwwrootPath),
+    RequestPath = "",
     OnPrepareResponse = ctx =>
     {
         ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
         ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+        // Кэширование на 1 час
+        ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=3600");
     }
 });
 
