@@ -34,17 +34,13 @@
   position: relative;
   width: 12rem;
   height: 12rem;
-  border-radius: 50%;
-  overflow: hidden;
   flex-shrink: 0;
 }
 
 .profile-avatar img {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #7289da;
   display: block;
 }
 

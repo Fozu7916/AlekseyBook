@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
 import './ProfileTab.css';
+import { Avatar } from '../../components/Avatar';
 
-interface ProfileTabProps extends TabProps {
+interface ProfileTabProps {
+  isActive: boolean;
   username: string;
 }
 
@@ -347,9 +349,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           onClick={handleAvatarClick} 
           style={{ cursor: isOwner ? 'pointer' : 'default' }}
         >
-          <img 
-            src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
-            alt={user.username} 
+          <Avatar 
+            avatarUrl={user.avatarUrl}
+            alt={user.username}
           />
           {isUploading && <div className="avatar-uploading">Загрузка...</div>}
           {isOwner && <div className="avatar-edit-hint">Нажмите для изменения</div>}
