@@ -17,18 +17,16 @@ namespace backend.Models
         public int ReceiverId { get; set; }
         
         [Required]
-        public required string Content { get; set; }
+        public string Content { get; set; }
         
         public bool IsRead { get; set; }
-        
-        public bool IsEdited { get; set; }
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         [ForeignKey("SenderId")]
-        public required User Sender { get; set; }
+        public User Sender { get; set; }
         
         [ForeignKey("ReceiverId")]
-        public required User Receiver { get; set; }
+        public User Receiver { get; set; }
     }
 } 

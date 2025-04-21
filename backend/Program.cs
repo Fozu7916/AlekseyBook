@@ -17,10 +17,9 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(builder =>
     {
         builder.WithOrigins(
-                "http://localhost:3000",
+                "http://localhost:3000", 
                 "http://localhost:5173",
-                "https://alekseybook.netlify.app",
-                "https://alekseybook.netlify.app/"
+                "https://alekseybook.netlify.app"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -67,24 +66,10 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (!connectionString.Contains("SslMode"))
-    {
-        connectionString += ";SslMode=Required;";
-    }
-    
-    var serverVersion = new MySqlServerVersion(new Version(5, 7, 0));
-    
-    options.UseMySql(connectionString, serverVersion, mySqlOptions =>
-    {
-        mySqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 10,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null)
-        .CommandTimeout(30);
-    });
-});
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
+    ));
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
@@ -101,18 +86,12 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        Console.WriteLine($"Attempting to connect to database with connection string: {connectionString}");
-        
         context.Database.EnsureCreated();
-        Console.WriteLine("Database connection successful and database created if it didn't exist.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while creating the database.");
-        Console.WriteLine($"Database connection error: {ex.Message}");
-        Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
     }
 }
 
@@ -122,8 +101,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseRouting();
 app.UseCors();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath))
