@@ -12,10 +12,8 @@ export const Avatar: React.FC<AvatarProps> = ({ avatarUrl, className = '', alt =
   const fullAvatarUrl = avatarUrl 
     ? avatarUrl.startsWith('http') 
       ? avatarUrl 
-      : avatarUrl.startsWith('/') 
-        ? `${config.baseUrl}${avatarUrl}`
-        : `${config.baseUrl}/api/files/${avatarUrl}`
-    : `${config.baseUrl}/api/files/default-avatar.svg`;
+      : `${config.baseUrl}${avatarUrl}`
+    : `${config.baseUrl}/uploads/default-avatar.png`;
 
   return (
     <div className={`${styles.avatarContainer} ${className}`}>
