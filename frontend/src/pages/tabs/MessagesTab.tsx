@@ -295,38 +295,16 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       const currentUser = await userService.getCurrentUser();
       if (!currentUser) throw new Error('Пользователь не авторизован');
 
-      const tempMessage = {
-        id: Date.now(),
-        content: messageContent,
-        sender: currentUser,
-        receiver: selectedChat,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      };
-
-      setMessages(prev => [...prev, tempMessage]);
-      setTimeout(scrollToBottom, 100);
-
+      // Отправляем сообщение на сервер
       const sentMessage = await userService.sendMessage(selectedChat.id, messageContent);
 
+      // Отключаем статус печатания если был активен
       if (wasTyping && chatService.isConnected()) {
         setIsTyping(false);
         await chatService.sendTypingStatus(selectedChat.id.toString(), false);
       }
 
-      setMessages(prev => 
-        prev.map(msg => 
-          msg.id === tempMessage.id ? {
-            ...sentMessage,
-            sender: currentUser,
-            receiver: selectedChat
-          } : msg
-        )
-      );
-
-      // Обновляем список чатов после успешной отправки
-      loadChats(true);
-
+      // Отправляем через SignalR
       if (chatService.isConnected()) {
         try {
           await chatService.sendMessage({
@@ -337,12 +315,15 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
           console.log('Сообщение успешно отправлено через SignalR');
         } catch (err) {
           console.error('Ошибка отправки через SignalR:', err);
+          // Если не удалось отправить через SignalR, обновим список сообщений
+          loadMessages(selectedChat.id, true);
         }
       }
 
     } catch (err) {
       console.error('Ошибка при отправке сообщения:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при отправке сообщения');
+      setNewMessage(messageContent); // Возвращаем сообщение в поле ввода в случае ошибки
     }
   };
 
