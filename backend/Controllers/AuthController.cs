@@ -89,7 +89,6 @@ namespace backend.Controllers
             {
                 Console.WriteLine($"Attempting registration for username: {registerData.Username}, email: {registerData.Email}");
 
-                // Проверяем, не занят ли email
                 var existingUserByEmail = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == registerData.Email);
                 if (existingUserByEmail != null)
@@ -97,7 +96,6 @@ namespace backend.Controllers
                     return BadRequest(new { message = "Этот email уже зарегистрирован" });
                 }
 
-                // Проверяем, не занято ли имя пользователя
                 var existingUserByUsername = await _context.Users
                     .FirstOrDefaultAsync(u => u.Username == registerData.Username);
                 if (existingUserByUsername != null)
@@ -105,7 +103,6 @@ namespace backend.Controllers
                     return BadRequest(new { message = "Это имя пользователя уже занято" });
                 }
 
-                // Создаем нового пользователя
                 var user = new User
                 {
                     Username = registerData.Username,

@@ -27,7 +27,6 @@ namespace backend.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
                 throw new Exception("Пользователь не авторизован");
-            
             return int.Parse(userIdClaim.Value);
         }
 
@@ -39,7 +38,6 @@ namespace backend.Controllers
                 var userId = GetCurrentUserId();
                 var message = await _messageService.SendMessage(userId, messageDto);
 
-                // Отправляем сообщение через SignalR обоим участникам
                 await _hubContext.Clients.Group(messageDto.ReceiverId.ToString())
                     .SendAsync("ReceiveMessage", message);
                 await _hubContext.Clients.Group(userId.ToString())

@@ -53,7 +53,6 @@ namespace backend.Services
             {
                 Console.WriteLine($"Attempting registration for username: {registerUserDto.Username}, email: {registerUserDto.Email}");
 
-                // Проверяем, не занят ли email
                 var existingUserByEmail = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == registerUserDto.Email);
                 if (existingUserByEmail != null)
@@ -61,7 +60,6 @@ namespace backend.Services
                     throw new Exception("Этот email уже зарегистрирован");
                 }
 
-                // Проверяем, не занято ли имя пользователя
                 var existingUserByUsername = await _context.Users
                     .FirstOrDefaultAsync(u => u.Username == registerUserDto.Username);
                 if (existingUserByUsername != null)

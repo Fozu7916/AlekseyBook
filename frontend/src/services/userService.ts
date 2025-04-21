@@ -73,7 +73,6 @@ class UserService {
       const url = `${this.baseUrl}${endpoint}`;
       console.log('Making request to:', url);
       
-      // Добавляем заголовки по умолчанию
       options.headers = {
         'Content-Type': 'application/json',
         ...options.headers,

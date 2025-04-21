@@ -92,7 +92,6 @@ namespace backend.Data
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // Настройка связей для сообществ
             modelBuilder.Entity<Community>()
                 .HasOne(c => c.Creator)
                 .WithMany()
@@ -111,7 +110,6 @@ namespace backend.Data
                 .HasForeignKey(cp => cp.CommunityId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Настройка связей для музыки
             modelBuilder.Entity<UserTrack>()
                 .HasOne(ut => ut.User)
                 .WithMany()

@@ -12,7 +12,6 @@ export class ChatService {
   private shouldStop: boolean = false;
 
   public async startConnection() {
-    // Проверяем наличие токена
     const token = localStorage.getItem('token');
     if (!token) {
       console.log('Нет токена авторизации, подключение невозможно');
@@ -41,14 +40,12 @@ export class ChatService {
 
   private async initializeConnection() {
     try {
-      // Проверяем наличие токена
       const token = localStorage.getItem('token');
       if (!token) {
         console.log('Нет токена авторизации, подключение невозможно');
         return;
       }
 
-      // Если есть активное подключение, сначала корректно закрываем его
       if (this.connection) {
         try {
           await this.connection.stop();
@@ -74,7 +71,6 @@ export class ChatService {
         .configureLogging(signalR.LogLevel.Debug)
         .build();
 
-      // Добавляем обработчики до подключения
       this.setupHandlers();
 
       if (this.shouldStop) {
@@ -101,7 +97,6 @@ export class ChatService {
     } catch (err) {
       console.error('Ошибка подключения SignalR:', err);
       if (!this.shouldStop) {
-        // Планируем переподключение только если не было запроса на остановку
         setTimeout(() => {
           if (!this.isConnected() && !this.shouldStop) {
             this.startConnection();
@@ -144,14 +139,12 @@ export class ChatService {
     console.log('Отправка статуса печатания:', { userId, isTyping });
     if (this.connection?.state === 'Connected') {
       try {
-        // Получаем текущего пользователя для отправки
         const currentUser = await userService.getCurrentUser();
         if (!currentUser) {
           console.error('Не удалось получить текущего пользователя');
           return;
         }
 
-        // Отправляем и senderId, и receiverId
         await this.connection.invoke('SendTypingStatus', {
           senderId: currentUser.id.toString(),
           receiverId: userId,
@@ -160,7 +153,6 @@ export class ChatService {
         console.log('Статус печатания успешно отправлен');
       } catch (err) {
         console.error('Ошибка отправки статуса печатания:', err);
-        // Пробуем переподключиться и отправить снова
         try {
           await this.startConnection();
           if (this.connection?.state === 'Connected') {
@@ -210,7 +202,6 @@ export class ChatService {
         if (!this.isConnected()) {
           console.log('SignalR не подключен, пробуем переподключиться...');
           await this.startConnection();
-          // Ждем немного после переподключения
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
@@ -239,7 +230,6 @@ export class ChatService {
   private setupHandlers() {
     if (!this.connection) return;
 
-    // Обработчик статуса печатания
     this.connection.on('ReceiveTypingStatus', (userId: string, isTyping: boolean) => {
       console.log('Получен статус печатания от сервера:', { userId, isTyping });
       this.typingCallbacks.forEach(callback => {
@@ -251,7 +241,6 @@ export class ChatService {
       });
     });
 
-    // Обработчик новых сообщений
     this.connection.on('ReceiveMessage', (message: Message) => {
       console.log('Получено новое сообщение от сервера:', message);
       this.messageCallbacks.forEach(callback => {
@@ -263,7 +252,6 @@ export class ChatService {
       });
     });
 
-    // Обработчики состояния подключения
     this.connection.onreconnecting(() => {
       console.log('SignalR переподключается...');
     });

@@ -10,11 +10,8 @@ using backend.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddControllers();
 
-// Add CORS before other services
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
@@ -26,10 +23,8 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add SignalR
 builder.Services.AddSignalR();
 
-// Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -50,7 +45,6 @@ builder.Services.AddAuthentication(options =>
         )
     };
 
-    // Настройка для SignalR
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -67,25 +61,21 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Add DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     ));
 
-// Register services
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Ensure database is created and migrated
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -101,33 +91,27 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Use CORS before other middleware
 app.UseCors();
 
-// Отключаем HTTPS редирект в режиме разработки
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
-// Создаем директорию wwwroot, если она не существует
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath))
 {
     Directory.CreateDirectory(wwwrootPath);
 }
 
-// Настраиваем путь для статических файлов
 app.UseStaticFiles();
 
-// Настраиваем путь для загруженных файлов
 var uploadsPath = Path.Combine(wwwrootPath, "uploads");
 if (!Directory.Exists(uploadsPath))
 {
@@ -148,7 +132,4 @@ app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+

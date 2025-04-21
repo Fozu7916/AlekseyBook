@@ -107,7 +107,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
       authorName: "Мария Петрова",
       authorAvatar: "/default-avatar.png",
       content: "Отличный профиль! Давно не виделись 😊",
-      createdAt: new Date(Date.now() - 86400000), // вчера
+      createdAt: new Date(Date.now() - 86400000), 
       likes: 3,
       comments: 1
     }
@@ -123,11 +123,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
       try {
         if (!username) return;
         
-        // Сначала получаем текущего пользователя
         const currentUserData = await userService.getCurrentUser();
         setCurrentUser(currentUserData);
         
-        // Затем получаем данные профиля
         const userData = await userService.getUserByUsername(username);
         setUser(userData);
         setEditForm({
@@ -138,18 +136,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         const isOwner = currentUserData?.username === username;
         setIsOwner(isOwner);
 
-        // Загружаем список друзей
         try {
           if (isOwner) {
-            // Если это профиль текущего пользователя, получаем полный список друзей
             const friendsList = await userService.getFriendsList();
             setFriends(friendsList.friends);
           } else {
-            // Если это чужой профиль, получаем список друзей этого пользователя
             const userFriends = await userService.getUserFriendsList(userData.id);
             setFriends(userFriends);
             
-            // Проверяем статус дружбы с текущим пользователем
             const friendsList = await userService.getFriendsList();
             setIsFriend(friendsList.friends.some(friend => friend.id === userData.id));
             setFriendRequestSent(friendsList.sentRequests.some(friend => friend.id === userData.id));
