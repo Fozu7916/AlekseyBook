@@ -134,6 +134,9 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
 
+// Добавляем health check endpoint
+app.MapGet("/health", () => Results.Ok("Healthy"));
+
 app.Run();
 
 
