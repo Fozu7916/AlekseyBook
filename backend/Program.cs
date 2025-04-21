@@ -67,15 +67,20 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(5, 7, 0)),
-        mySqlOptions => mySqlOptions
-            .EnableRetryOnFailure(
-                maxRetryCount: 10,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null)
-    ));
+{
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    var serverVersion = new MySqlServerVersion(new Version(5, 7, 0));
+    
+    options.UseMySql(connectionString, serverVersion, mySqlOptions =>
+    {
+        mySqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 10,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null)
+        .EnableSslConnection()
+        .CommandTimeout(30);
+    });
+});
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
@@ -92,12 +97,18 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        Console.WriteLine($"Attempting to connect to database with connection string: {connectionString}");
+        
         context.Database.EnsureCreated();
+        Console.WriteLine("Database connection successful and database created if it didn't exist.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while creating the database.");
+        Console.WriteLine($"Database connection error: {ex.Message}");
+        Console.WriteLine($"Inner exception: {ex.InnerException?.Message}");
     }
 }
 
