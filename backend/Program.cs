@@ -7,6 +7,7 @@ using System.Text;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
+using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,11 +66,34 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+}
+
+// Добавляем необходимые параметры в строку подключения
+var connectionStringBuilder = new MySqlConnectionStringBuilder(connectionString);
+connectionStringBuilder.AllowUserVariables = true;
+connectionStringBuilder.UseAffectedRows = false;
+connectionStringBuilder.SslMode = MySqlSslMode.Required;
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
+{
     options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
-    ));
+        connectionStringBuilder.ConnectionString,
+        ServerVersion.Create(5, 7, 0, Pomelo.EntityFrameworkCore.MySql.Infrastructure.ServerType.MySql),
+        mySqlOptions =>
+        {
+            mySqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null);
+            mySqlOptions.CommandTimeout(30);
+            mySqlOptions.MigrationsAssembly("backend");
+        }
+    );
+});
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
@@ -86,12 +110,17 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine("Attempting to ensure database is created...");
         context.Database.EnsureCreated();
+        Console.WriteLine("Database creation check completed successfully.");
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while creating the database.");
+        logger.LogError(ex, "An error occurred while creating/accessing the database.");
+        Console.WriteLine($"Database connection error: {ex.Message}");
+        Console.WriteLine($"Connection string: {connectionStringBuilder.GetConnectionString(includePassword: false)}");
+        throw;
     }
 }
 
