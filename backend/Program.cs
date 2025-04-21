@@ -16,8 +16,12 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder
-            .SetIsOriginAllowed(_ => true) // Разрешаем все origins временно для отладки
+        builder.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://alekseybook.netlify.app",
+                "https://alekseybook.netlify.app/"
+            )
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
