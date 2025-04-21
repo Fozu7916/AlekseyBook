@@ -1,23 +1,26 @@
-import * as React from 'react';
-import styles from './Avatar.module.css';
+import React from 'react';
 import config from '../config';
+import styles from './Avatar.module.css';
 
 interface AvatarProps {
   avatarUrl?: string | null;
   className?: string;
+  alt?: string;
 }
 
-export const Avatar = ({ avatarUrl, className }: AvatarProps): React.ReactElement => {
-  const defaultAvatar = `${config.baseUrl}/uploads/default-avatar.png`;
-  
-  const finalUrl = avatarUrl || defaultAvatar;
-  
+export const Avatar: React.FC<AvatarProps> = ({ avatarUrl, className = '', alt = 'Avatar' }) => {
+  const fullAvatarUrl = avatarUrl 
+    ? avatarUrl.startsWith('http') 
+      ? avatarUrl 
+      : `${config.baseUrl}/api/files/${avatarUrl}`
+    : `${config.baseUrl}/api/files/default-avatar.svg`;
+
   return (
-    <div className={`${styles.avatarContainer} ${className || ''}`}>
-      <img 
-        src={finalUrl}
-        alt="User avatar" 
-        className={styles.avatarImage}
+    <div className={`${styles.avatarContainer} ${className}`}>
+      <img
+        src={fullAvatarUrl}
+        alt={alt}
+        className={styles.avatar}
       />
     </div>
   );
