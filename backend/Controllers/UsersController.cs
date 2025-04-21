@@ -45,15 +45,18 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<AuthResponseDto>> CreateUser([FromBody] CreateUserDto createUserDto)
+        public async Task<ActionResult<AuthResponseDto>> CreateUser([FromBody] RegisterUserDto registerUserDto)
         {
             try
             {
-                var response = await _userService.Register(createUserDto);
+                Console.WriteLine($"Received registration request for username: {registerUserDto.Username}, email: {registerUserDto.Email}");
+                var response = await _userService.Register(registerUserDto);
+                Console.WriteLine("Registration successful");
                 return Ok(response);
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Registration failed: {ex.Message}");
                 return BadRequest(new { message = ex.Message });
             }
         }

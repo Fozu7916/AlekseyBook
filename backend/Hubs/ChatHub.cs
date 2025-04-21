@@ -44,6 +44,7 @@ namespace backend.Hubs
             {
                 Console.WriteLine($"Sending message from {senderId} to {message.ReceiverId}");
                 await Clients.Group(message.ReceiverId.ToString()).SendAsync("ReceiveMessage", message);
+                await Clients.Group(senderId).SendAsync("ReceiveMessage", message);
             }
             else
             {

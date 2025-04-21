@@ -39,8 +39,10 @@ namespace backend.Controllers
                 var userId = GetCurrentUserId();
                 var message = await _messageService.SendMessage(userId, messageDto);
 
-                // Отправляем сообщение через SignalR
+                // Отправляем сообщение через SignalR обоим участникам
                 await _hubContext.Clients.Group(messageDto.ReceiverId.ToString())
+                    .SendAsync("ReceiveMessage", message);
+                await _hubContext.Clients.Group(userId.ToString())
                     .SendAsync("ReceiveMessage", message);
 
                 return Ok(message);

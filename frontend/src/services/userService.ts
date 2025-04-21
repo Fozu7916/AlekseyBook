@@ -21,6 +21,8 @@ interface RegisterData {
   username: string;
   email: string;
   password: string;
+  avatarUrl?: string;
+  bio?: string;
 }
 
 interface UpdateUserData {
@@ -138,9 +140,15 @@ class UserService {
 
   async register(data: RegisterData): Promise<{ token: string; user: User }> {
     try {
-      const response = await this.request('/users', {
+      const response = await this.request('/auth/register', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          username: data.username,
+          email: data.email,
+          password: data.password,
+          avatarUrl: data.avatarUrl,
+          bio: data.bio
+        })
       });
 
       this.token = response.token;

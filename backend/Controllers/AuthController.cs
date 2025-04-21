@@ -28,7 +28,7 @@ namespace backend.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<UserResponseDto>> Login([FromBody] LoginDto loginData)
+        public async Task<ActionResult<UserResponseDto>> Login([FromBody] LoginUserDto loginData)
         {
             try
             {
@@ -79,6 +79,74 @@ namespace backend.Controllers
                 Console.WriteLine($"Error during login: {ex.Message}");
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { message = $"Ошибка при входе в систему: {ex.Message}" });
+            }
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterUserDto registerData)
+        {
+            try
+            {
+                Console.WriteLine($"Attempting registration for username: {registerData.Username}, email: {registerData.Email}");
+
+                // Проверяем, не занят ли email
+                var existingUserByEmail = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == registerData.Email);
+                if (existingUserByEmail != null)
+                {
+                    return BadRequest(new { message = "Этот email уже зарегистрирован" });
+                }
+
+                // Проверяем, не занято ли имя пользователя
+                var existingUserByUsername = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Username == registerData.Username);
+                if (existingUserByUsername != null)
+                {
+                    return BadRequest(new { message = "Это имя пользователя уже занято" });
+                }
+
+                // Создаем нового пользователя
+                var user = new User
+                {
+                    Username = registerData.Username,
+                    Email = registerData.Email,
+                    PasswordHash = _userService.HashPassword(registerData.Password),
+                    CreatedAt = DateTime.UtcNow,
+                    LastLogin = DateTime.UtcNow,
+                    Status = "Новый пользователь",
+                    IsVerified = false
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"User created successfully with ID: {user.Id}");
+
+                var token = GenerateJwtToken(user);
+                Console.WriteLine("JWT token generated successfully");
+
+                return Ok(new AuthResponseDto
+                {
+                    Token = token,
+                    User = new UserResponseDto
+                    {
+                        Id = user.Id,
+                        Username = user.Username,
+                        Email = user.Email,
+                        AvatarUrl = user.AvatarUrl,
+                        Status = user.Status,
+                        CreatedAt = user.CreatedAt,
+                        LastLogin = user.LastLogin,
+                        IsVerified = user.IsVerified,
+                        Bio = user.Bio
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during registration: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { message = $"Ошибка при регистрации: {ex.Message}" });
             }
         }
 

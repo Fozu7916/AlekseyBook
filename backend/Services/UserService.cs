@@ -14,9 +14,8 @@ namespace backend.Services
 {
     public interface IUserService
     {
-        Task<UserResponseDto> CreateUser(CreateUserDto createUserDto);
-        Task<AuthResponseDto> Register(CreateUserDto createUserDto);
-        Task<AuthResponseDto?> Login(LoginDto loginDto);
+        Task<AuthResponseDto> Register(RegisterUserDto registerUserDto);
+        Task<AuthResponseDto?> Login(LoginUserDto loginDto);
         Task<UserResponseDto?> GetUserById(int id);
         Task<UserResponseDto?> GetUserByUsername(string username);
         Task<List<UserResponseDto>> GetUsers(int page = 1, int pageSize = 10);
@@ -48,44 +47,64 @@ namespace backend.Services
             _configuration = configuration;
         }
 
-        public async Task<UserResponseDto> CreateUser(CreateUserDto createUserDto)
+        public async Task<AuthResponseDto> Register(RegisterUserDto registerUserDto)
         {
-            var existingUser = await _context.Users
-                .FirstOrDefaultAsync(u => u.Username == createUserDto.Username || u.Email == createUserDto.Email);
-
-            if (existingUser != null)
+            try
             {
-                throw new Exception("Username or email already exists");
+                Console.WriteLine($"Attempting registration for username: {registerUserDto.Username}, email: {registerUserDto.Email}");
+
+                // Проверяем, не занят ли email
+                var existingUserByEmail = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == registerUserDto.Email);
+                if (existingUserByEmail != null)
+                {
+                    throw new Exception("Этот email уже зарегистрирован");
+                }
+
+                // Проверяем, не занято ли имя пользователя
+                var existingUserByUsername = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Username == registerUserDto.Username);
+                if (existingUserByUsername != null)
+                {
+                    throw new Exception("Это имя пользователя уже занято");
+                }
+
+                var user = new User
+                {
+                    Username = registerUserDto.Username,
+                    Email = registerUserDto.Email,
+                    PasswordHash = HashPassword(registerUserDto.Password),
+                    CreatedAt = DateTime.UtcNow,
+                    LastLogin = DateTime.UtcNow,
+                    Status = "Новый пользователь",
+                    IsVerified = false,
+                    IsOnline = false,
+                    IsBanned = false
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine($"User created successfully with ID: {user.Id}");
+
+                var userDto = MapToDto(user);
+                var token = GenerateJwtToken(userDto);
+
+                return new AuthResponseDto
+                {
+                    Token = token,
+                    User = userDto
+                };
             }
-
-            var user = new User
+            catch (Exception ex)
             {
-                Username = createUserDto.Username,
-                Email = createUserDto.Email,
-                PasswordHash = HashPassword(createUserDto.Password),
-                AvatarUrl = createUserDto.AvatarUrl,
-                Bio = createUserDto.Bio
-            };
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return MapToDto(user);
+                Console.WriteLine($"Error during registration: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
-        public async Task<AuthResponseDto> Register(CreateUserDto createUserDto)
-        {
-            var user = await CreateUser(createUserDto);
-            var token = GenerateJwtToken(user);
-            
-            return new AuthResponseDto
-            {
-                Token = token,
-                User = user
-            };
-        }
-
-        public async Task<AuthResponseDto?> Login(LoginDto loginDto)
+        public async Task<AuthResponseDto?> Login(LoginUserDto loginDto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
             
@@ -332,34 +351,7 @@ namespace backend.Services
                 Bio = user.Bio
             };
 
-            return (response, GenerateJwtToken(user));
-        }
-
-        private string GenerateJwtToken(User user)
-        {
-            var key = _configuration["Jwt:Key"] ?? throw new Exception("JWT ключ не настроен");
-            var issuer = _configuration["Jwt:Issuer"] ?? throw new Exception("JWT издатель не настроен");
-            var audience = _configuration["Jwt:Audience"] ?? throw new Exception("JWT аудитория не настроена");
-
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email ?? ""),
-                new Claim(ClaimTypes.Name, user.Username ?? "")
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                claims: claims,
-                expires: DateTime.Now.AddDays(7),
-                signingCredentials: credentials
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return (response, GenerateJwtToken(response));
         }
 
         public async Task<(UserResponseDto User, string Token)> LoginUserAsync(LoginUserDto loginData)

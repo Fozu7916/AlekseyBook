@@ -7,17 +7,60 @@ export class ChatService {
   private connection: HubConnection | null = null;
   private typingCallbacks: ((userId: string, isTyping: boolean) => void)[] = [];
   private messageCallbacks: ((message: Message) => void)[] = [];
+  private connectionPromise: Promise<void> | null = null;
+  private isConnecting: boolean = false;
+  private shouldStop: boolean = false;
 
   public async startConnection() {
+    // Проверяем наличие токена
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('Нет токена авторизации, подключение невозможно');
+      return;
+    }
+
+    if (this.isConnecting) {
+      console.log('Подключение уже в процессе');
+      return this.connectionPromise;
+    }
+
     if (this.connection?.state === 'Connected') {
       console.log('SignalR уже подключен');
       return;
     }
 
+    this.shouldStop = false;
+    this.isConnecting = true;
+    
     try {
+      await this.initializeConnection();
+    } finally {
+      this.isConnecting = false;
+    }
+  }
+
+  private async initializeConnection() {
+    try {
+      // Проверяем наличие токена
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('Нет токена авторизации, подключение невозможно');
+        return;
+      }
+
+      // Если есть активное подключение, сначала корректно закрываем его
       if (this.connection) {
-        await this.connection.stop();
-        this.connection = null;
+        try {
+          await this.connection.stop();
+          this.connection = null;
+        } catch (err) {
+          console.warn('Ошибка при закрытии предыдущего подключения:', err);
+        }
+      }
+
+      if (this.shouldStop) {
+        console.log('Остановка подключения запрошена');
+        return;
       }
 
       this.connection = new HubConnectionBuilder()
@@ -34,27 +77,49 @@ export class ChatService {
       // Добавляем обработчики до подключения
       this.setupHandlers();
 
+      if (this.shouldStop) {
+        console.log('Остановка подключения запрошена');
+        return;
+      }
+
       await this.connection.start();
       console.log('SignalR успешно подключен');
 
+      if (this.shouldStop) {
+        await this.connection.stop();
+        this.connection = null;
+        console.log('Подключение остановлено по запросу');
+        return;
+      }
+
       // После подключения присоединяемся к чату
       const currentUser = await userService.getCurrentUser();
-      if (currentUser) {
+      if (currentUser && this.connection && this.connection.state === 'Connected') {
         await this.connection.invoke('JoinChat', currentUser.id.toString());
         console.log('Присоединились к чату как пользователь:', currentUser.id);
       }
     } catch (err) {
       console.error('Ошибка подключения SignalR:', err);
-      // Пробуем переподключиться через 3 секунды
-      setTimeout(() => this.startConnection(), 3000);
+      if (!this.shouldStop) {
+        // Планируем переподключение только если не было запроса на остановку
+        setTimeout(() => {
+          if (!this.isConnected() && !this.shouldStop) {
+            this.startConnection();
+          }
+        }, 5000);
+      }
+      throw err;
     }
   }
 
   public async stopConnection() {
+    console.log('Запрошена остановка подключения');
+    this.shouldStop = true;
+
     if (this.connection) {
       try {
         const currentUser = await userService.getCurrentUser();
-        if (currentUser) {
+        if (currentUser && this.connection.state === 'Connected') {
           await this.connection.invoke('LeaveChat', currentUser.id.toString());
           console.log('Покинули чат как пользователь:', currentUser.id);
         }
@@ -67,6 +132,10 @@ export class ChatService {
         console.log('SignalR отключен');
       } catch (err) {
         console.error('Ошибка при отключении SignalR:', err);
+      } finally {
+        this.connection = null;
+        this.isConnecting = false;
+        this.connectionPromise = null;
       }
     }
   }
@@ -99,7 +168,7 @@ export class ChatService {
   }
 
   public isConnected(): boolean {
-    return this.connection?.state === 'Connected';
+    return this.connection?.state === 'Connected' && !this.shouldStop;
   }
 
   public async sendMessage(message: Message) {
@@ -111,11 +180,16 @@ export class ChatService {
         if (!this.isConnected()) {
           console.log('SignalR не подключен, пробуем переподключиться...');
           await this.startConnection();
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Ждем 1 секунду после переподключения
+          // Ждем немного после переподключения
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        if (!this.connection || this.connection.state !== 'Connected') {
+          throw new Error('Соединение не установлено');
         }
 
         console.log('Отправка сообщения через SignalR:', message);
-        await this.connection!.invoke('SendMessage', {
+        await this.connection.invoke('SendMessage', {
           content: message.content,
           receiverId: message.receiver.id
         });
@@ -135,33 +209,41 @@ export class ChatService {
   private setupHandlers() {
     if (!this.connection) return;
 
-    this.connection.onreconnecting((error) => {
-      console.log('SignalR переподключается...', error);
-    });
-
-    this.connection.onreconnected(async (connectionId) => {
-      console.log('SignalR переподключен с ID:', connectionId);
-      const currentUser = await userService.getCurrentUser();
-      if (currentUser) {
-        await this.connection?.invoke('JoinChat', currentUser.id.toString());
-        console.log('Переприсоединились к чату после переподключения');
-      }
-    });
-
-    this.connection.onclose((error) => {
-      console.log('SignalR соединение закрыто:', error);
-      // Пробуем переподключиться
-      setTimeout(() => this.startConnection(), 3000);
-    });
-
-    this.connection.on('ReceiveMessage', (message: Message) => {
-      console.log('Получено сообщение через SignalR:', message);
-      this.messageCallbacks.forEach(callback => callback(message));
-    });
-
+    // Обработчик статуса печатания
     this.connection.on('ReceiveTypingStatus', (userId: string, isTyping: boolean) => {
-      console.log('Получен статус печатания через SignalR:', userId, isTyping);
-      this.typingCallbacks.forEach(callback => callback(userId, isTyping));
+      console.log('Получен статус печатания от сервера:', userId, isTyping);
+      this.typingCallbacks.forEach(callback => {
+        try {
+          callback(userId, isTyping);
+        } catch (err) {
+          console.error('Ошибка в обработчике статуса печатания:', err);
+        }
+      });
+    });
+
+    // Обработчик новых сообщений
+    this.connection.on('ReceiveMessage', (message: Message) => {
+      console.log('Получено новое сообщение от сервера:', message);
+      this.messageCallbacks.forEach(callback => {
+        try {
+          callback(message);
+        } catch (err) {
+          console.error('Ошибка в обработчике сообщений:', err);
+        }
+      });
+    });
+
+    // Обработчики состояния подключения
+    this.connection.onreconnecting(() => {
+      console.log('SignalR переподключается...');
+    });
+
+    this.connection.onreconnected(() => {
+      console.log('SignalR переподключен');
+    });
+
+    this.connection.onclose(() => {
+      console.log('SignalR закрыт');
     });
   }
 }

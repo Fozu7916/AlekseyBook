@@ -22,10 +22,10 @@ namespace backend.Models
         [Required]
         public string PasswordHash { get; set; }
 
-        public string AvatarUrl { get; set; }
+        public string? AvatarUrl { get; set; }
 
         [StringLength(100)]
-        public string Status { get; set; }
+        public string? Status { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
@@ -36,7 +36,9 @@ namespace backend.Models
         public bool IsVerified { get; set; }
         
         public bool IsBanned { get; set; }
+
+        public bool IsOnline { get; set; } = false;
         
-        public string Bio { get; set; }
+        public string? Bio { get; set; }
     }
 } 
