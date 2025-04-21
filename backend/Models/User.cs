@@ -17,10 +17,10 @@ namespace backend.Models
         [Required]
         [EmailAddress]
         [StringLength(100)]
-        public string Email { get; set; }
+        public required string Email { get; set; }
 
         [Required]
-        public string PasswordHash { get; set; }
+        public required string PasswordHash { get; set; }
 
         public string? AvatarUrl { get; set; }
 
@@ -40,5 +40,14 @@ namespace backend.Models
         public bool IsOnline { get; set; } = false;
         
         public string? Bio { get; set; }
+
+        // Навигационные свойства
+        public virtual ICollection<Friend> FriendRequestsSent { get; set; } = new List<Friend>();
+        public virtual ICollection<Friend> FriendRequestsReceived { get; set; } = new List<Friend>();
+        public virtual ICollection<Message> MessagesSent { get; set; } = new List<Message>();
+        public virtual ICollection<Message> MessagesReceived { get; set; } = new List<Message>();
+        public virtual ICollection<UserTrack> UserTracks { get; set; } = new List<UserTrack>();
+        public virtual ICollection<CommunityMember> Communities { get; set; } = new List<CommunityMember>();
+        public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
     }
 } 

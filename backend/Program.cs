@@ -69,6 +69,11 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (!connectionString.Contains("SslMode"))
+    {
+        connectionString += ";SslMode=Required;";
+    }
+    
     var serverVersion = new MySqlServerVersion(new Version(5, 7, 0));
     
     options.UseMySql(connectionString, serverVersion, mySqlOptions =>
@@ -77,7 +82,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
             maxRetryCount: 10,
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null)
-        .EnableSslConnection()
         .CommandTimeout(30);
     });
 });
