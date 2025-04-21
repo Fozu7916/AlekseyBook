@@ -35,6 +35,8 @@
   width: 12rem;
   height: 12rem;
   flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 .profile-avatar img {

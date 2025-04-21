@@ -8,12 +8,12 @@ interface AvatarProps {
   alt?: string;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ avatarUrl, className = '', alt = 'Avatar' }) => {
+export const Avatar = ({ avatarUrl, className = '', alt = 'Avatar' }: AvatarProps): React.ReactElement => {
   const fullAvatarUrl = avatarUrl 
     ? avatarUrl.startsWith('http') 
       ? avatarUrl 
-      : `${config.baseUrl}${avatarUrl}`
-    : '/images/default-avatar.svg';
+      : `${config.baseUrl}/api/files/${avatarUrl}`
+    : `${config.baseUrl}/api/files/default-avatar.svg`;
 
   return (
     <div className={`${styles.avatarContainer} ${className}`}>
