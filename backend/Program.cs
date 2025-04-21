@@ -66,10 +66,15 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
+{
+    var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") ?? 
+        builder.Configuration.GetConnectionString("DefaultConnection");
+    
     options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
-    ));
+        connectionString,
+        ServerVersion.AutoDetect(connectionString)
+    );
+});
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
