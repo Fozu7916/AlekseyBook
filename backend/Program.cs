@@ -69,6 +69,20 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") ?? 
         builder.Configuration.GetConnectionString("DefaultConnection");
+
+    if (connectionString.StartsWith("mysql://"))
+    {
+        // Parse connection URL
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        var user = userInfo[0];
+        var password = userInfo[1];
+        var database = uri.AbsolutePath.TrimStart('/');
+        var host = uri.Host;
+        var port = uri.Port;
+
+        connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};";
+    }
     
     options.UseMySql(
         connectionString,
