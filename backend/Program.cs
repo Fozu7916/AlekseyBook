@@ -107,25 +107,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
-
 app.UseRouting();
-app.UseCors(builder =>
-{
-    builder.WithOrigins(
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "https://alekseybook.netlify.app",
-            "https://sweet-trust-production.up.railway.app"
-        )
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials()
-        .SetIsOriginAllowed(origin => true); // Временно разрешаем все origins для отладки
-});
+app.UseCors();
 
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath))
