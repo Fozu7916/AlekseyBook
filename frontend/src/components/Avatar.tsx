@@ -1,5 +1,4 @@
-/** @jsxImportSource react */
-import React from 'react';
+import * as React from 'react';
 import styles from './Avatar.module.css';
 import config from '../config';
 
@@ -8,7 +7,7 @@ interface AvatarProps {
   className?: string;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ avatarUrl, className }) => {
+export const Avatar = ({ avatarUrl, className }: AvatarProps): React.ReactElement => {
   const defaultAvatar = `${config.baseUrl}/uploads/default-avatar.png`;
   
   const finalUrl = avatarUrl || defaultAvatar;
