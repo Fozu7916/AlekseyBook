@@ -226,47 +226,51 @@ namespace backend.Services
 
         public async Task<UserResponseDto?> UpdateAvatar(int userId, IFormFile avatar)
         {
-            var user = await _context.Users.FindAsync(userId);
-            if (user == null) return null;
-
-            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
-            var uploadsFolder = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "avatars");
-            
-            Console.WriteLine($"Uploading avatar to: {uploadsFolder}");
-            
-            if (!Directory.Exists(uploadsFolder))
+            try
             {
-                Directory.CreateDirectory(uploadsFolder);
-                Console.WriteLine($"Created directory: {uploadsFolder}");
-            }
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return null;
 
-            var filePath = Path.Combine(uploadsFolder, fileName);
-            Console.WriteLine($"Saving file to: {filePath}");
+                if (avatar == null || avatar.Length == 0)
+                    throw new Exception("Файл не выбран");
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await avatar.CopyToAsync(stream);
-            }
-            Console.WriteLine($"File saved successfully: {filePath}");
+                if (avatar.Length > 5 * 1024 * 1024)
+                    throw new Exception("Размер файла не должен превышать 5MB");
 
-            if (!string.IsNullOrEmpty(user.AvatarUrl))
-            {
-                var oldFilePath = Path.Combine(_environment.ContentRootPath, "wwwroot", user.AvatarUrl.TrimStart('/'));
-                Console.WriteLine($"Checking old file: {oldFilePath}");
-                if (File.Exists(oldFilePath))
+                var uploadsFolder = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads");
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                // Удаляем старый аватар, если он существует
+                if (!string.IsNullOrEmpty(user.AvatarUrl))
                 {
-                    File.Delete(oldFilePath);
-                    Console.WriteLine($"Old file deleted: {oldFilePath}");
+                    var oldAvatarPath = Path.Combine(_environment.ContentRootPath, "wwwroot", user.AvatarUrl.TrimStart('/'));
+                    if (System.IO.File.Exists(oldAvatarPath))
+                        System.IO.File.Delete(oldAvatarPath);
                 }
+
+                // Генерируем уникальное имя файла
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await avatar.CopyToAsync(fileStream);
+                }
+
+                // Обновляем URL аватара с учетом HTTPS
+                var baseUrl = _configuration["API_URL"] ?? "https://sweet-trust-production.up.railway.app";
+                user.AvatarUrl = $"{baseUrl}/uploads/{fileName}";
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return MapToDto(user);
             }
-
-            user.AvatarUrl = $"/uploads/avatars/{fileName}";
-            user.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            Console.WriteLine($"Avatar URL updated in database: {user.AvatarUrl}");
-            
-            return MapToDto(user);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating avatar: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<User> GetUserByIdAsync(int id)
