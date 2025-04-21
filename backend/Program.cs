@@ -69,7 +69,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
+        new MySqlServerVersion(new Version(5, 7, 0)),
+        mySqlOptions => mySqlOptions
+            .EnableRetryOnFailure(
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null)
     ));
 
 builder.Services.AddScoped<IUserService, UserService>();
