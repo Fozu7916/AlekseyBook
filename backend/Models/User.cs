@@ -48,6 +48,6 @@ namespace backend.Models
         public virtual ICollection<Message> MessagesReceived { get; set; } = new List<Message>();
         public virtual ICollection<UserTrack> UserTracks { get; set; } = new List<UserTrack>();
         public virtual ICollection<CommunityMember> Communities { get; set; } = new List<CommunityMember>();
-        public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
+        public virtual ICollection<CommunityPost> Posts { get; set; } = new List<CommunityPost>();
     }
 } 
