@@ -3,14 +3,25 @@
   display: inline-block;
 }
 
-.user-avatar {
+.user-button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+}
+
+.user-button .avatarContainer {
+  width: 36px !important;
+  height: 36px !important;
   margin-right: 10px;
-  object-fit: cover;
   border: 2px solid transparent;
   transition: border-color 0.2s ease;
+}
+
+.user-button:hover .avatarContainer {
+  border-color: #1a73e8;
 }
 
 .user-name {

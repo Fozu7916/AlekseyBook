@@ -474,9 +474,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             {posts.map(post => (
               <div key={post.id} className="post-card">
                 <div className="post-header">
-                  <img 
-                    src={post.authorAvatar || '/images/default-avatar.svg'} 
-                    alt={post.authorName} 
+                  <Avatar
+                    avatarUrl={post.authorAvatar}
+                    alt={post.authorName}
                     className="post-avatar"
                   />
                   <div className="post-meta">
@@ -518,9 +518,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               <>
                 {friends.slice(0, 3).map(friend => (
                   <div key={friend.id} className="friend-card" onClick={() => navigate(`/profile/${friend.username}`)}>
-                    <img 
-                      src={friend.avatarUrl ? `http://localhost:5038${friend.avatarUrl}` : '/images/default-avatar.svg'} 
-                      alt={friend.username} 
+                    <Avatar
+                      avatarUrl={friend.avatarUrl}
+                      alt={friend.username}
                       className="friend-avatar"
                     />
                     <div className="friend-info">
