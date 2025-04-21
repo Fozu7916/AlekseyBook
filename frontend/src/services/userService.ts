@@ -61,7 +61,7 @@ interface ChatPreview {
 }
 
 class UserService {
-  private baseUrl = 'http://localhost:5038/api';
+  private baseUrl = `${process.env.REACT_APP_API_URL}/api`;
   private token: string | null = null;
 
   constructor() {
