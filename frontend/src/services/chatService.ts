@@ -2,6 +2,7 @@ import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { userService } from './userService';
 import { Message } from './userService';
 import * as signalR from '@microsoft/signalr';
+import config from '../config';
 
 export class ChatService {
   private connection: HubConnection | null = null;
@@ -61,7 +62,7 @@ export class ChatService {
       }
 
       this.connection = new HubConnectionBuilder()
-        .withUrl('http://localhost:5038/chatHub', {
+        .withUrl(`${config.apiUrl.replace('/api', '')}/chatHub`, {
           accessTokenFactory: () => localStorage.getItem('token') || '',
           transport: signalR.HttpTransportType.WebSockets,
           skipNegotiation: true,

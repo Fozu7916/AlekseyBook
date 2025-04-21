@@ -1,4 +1,5 @@
 import { userService } from './userService';
+import config from '../config';
 
 export interface Message {
   id: number;
@@ -17,8 +18,8 @@ export interface Chat {
   unreadCount: number;
 }
 
-class MessageService {
-  private baseUrl = 'http://localhost:5038/api';
+export class MessageService {
+  private baseUrl = config.apiUrl;
   private token: string | null = null;
 
   constructor() {

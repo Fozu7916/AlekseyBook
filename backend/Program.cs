@@ -19,7 +19,7 @@ builder.Services.AddCors(options =>
         builder.WithOrigins(
                 "http://localhost:3000", 
                 "http://localhost:5173",
-                "https://alkseybook.netlify.app"
+                "https://alekseybook.netlify.app"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()

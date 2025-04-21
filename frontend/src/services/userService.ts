@@ -1,4 +1,5 @@
 import { chatService } from './chatService';
+import config from '../config';
 
 interface User {
   id: number;
@@ -61,7 +62,7 @@ interface ChatPreview {
 }
 
 class UserService {
-  private baseUrl = `${process.env.REACT_APP_API_URL}/api`;
+  private baseUrl = config.apiUrl;
   private token: string | null = null;
 
   constructor() {

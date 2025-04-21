@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { Avatar } from '../Avatar';
 import './UserDropdown.css';
 import { User } from '../../services/userService';
 
@@ -46,18 +48,13 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ user, onLogout, onProfileCl
 
   return (
     <div className={`user-dropdown ${isOpen ? 'open' : ''}`} ref={dropdownRef}>
-      <div 
-        className="user-name"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <img 
-          src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
-          alt={user.username}
+      <button className="user-button" onClick={() => setIsOpen(!isOpen)}>
+        <Avatar 
+          avatarUrl={user.avatarUrl}
           className="user-avatar"
+          alt={user.username}
         />
-        {user.username}
-        <div className="dropdown-arrow">▼</div>
-      </div>
+      </button>
       
       {isOpen && (
         <div className="dropdown-menu">
