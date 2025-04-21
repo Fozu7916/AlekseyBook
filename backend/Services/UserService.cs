@@ -244,7 +244,7 @@ namespace backend.Services
                 // Удаляем старый аватар, если он существует
                 if (!string.IsNullOrEmpty(user.AvatarUrl))
                 {
-                    var oldAvatarPath = Path.Combine(_environment.ContentRootPath, "wwwroot", user.AvatarUrl.TrimStart('/'));
+                    var oldAvatarPath = Path.Combine(uploadsFolder, Path.GetFileName(user.AvatarUrl));
                     if (System.IO.File.Exists(oldAvatarPath))
                         System.IO.File.Delete(oldAvatarPath);
                 }
@@ -258,12 +258,13 @@ namespace backend.Services
                     await avatar.CopyToAsync(fileStream);
                 }
 
-                // Обновляем URL аватара с учетом HTTPS
-                var baseUrl = _configuration["API_URL"] ?? "https://sweet-trust-production.up.railway.app";
-                user.AvatarUrl = $"{baseUrl}/uploads/{fileName}";
+                // Сохраняем только относительный путь
+                user.AvatarUrl = $"/uploads/{fileName}";
                 user.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
+                
+                Console.WriteLine($"Avatar updated. Path: {user.AvatarUrl}");
                 return MapToDto(user);
             }
             catch (Exception ex)
