@@ -31,6 +31,22 @@ namespace backend.Services
 
         public async Task<MessageDto> SendMessage(int senderId, SendMessageDto messageDto)
         {
+            var users = await _context.Users
+                .Where(u => u.Id == senderId || u.Id == messageDto.ReceiverId)
+                .Select(u => new UserResponseDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Email = u.Email,
+                    AvatarUrl = u.AvatarUrl,
+                    Status = u.Status,
+                    CreatedAt = u.CreatedAt,
+                    LastLogin = u.LastLogin,
+                    IsVerified = u.IsVerified,
+                    Bio = u.Bio
+                })
+                .ToDictionaryAsync(u => u.Id);
+
             var message = new Message
             {
                 SenderId = senderId,
@@ -43,14 +59,20 @@ namespace backend.Services
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            return await MapToMessageDto(message);
+            return new MessageDto
+            {
+                Id = message.Id,
+                Content = message.Content,
+                IsRead = message.IsRead,
+                CreatedAt = message.CreatedAt,
+                Sender = users.GetValueOrDefault(senderId),
+                Receiver = users.GetValueOrDefault(messageDto.ReceiverId)
+            };
         }
 
         public async Task<List<MessageDto>> GetChatMessages(int userId, int otherUserId)
         {
             var messages = await _context.Messages
-                .Include(m => m.Sender)
-                .Include(m => m.Receiver)
                 .Where(m => 
                     (m.SenderId == userId && m.ReceiverId == otherUserId) ||
                     (m.SenderId == otherUserId && m.ReceiverId == userId))
@@ -58,53 +80,88 @@ namespace backend.Services
                 .Take(50)
                 .ToListAsync();
 
-            var messageDtos = new List<MessageDto>();
-            foreach (var message in messages)
-            {
-                messageDtos.Add(await MapToMessageDto(message));
-            }
-            return messageDtos;
+            var userIds = messages
+                .SelectMany(m => new[] { m.SenderId, m.ReceiverId })
+                .Distinct()
+                .ToList();
+
+            var users = await _context.Users
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new UserResponseDto
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Email = u.Email,
+                    AvatarUrl = u.AvatarUrl,
+                    Status = u.Status,
+                    CreatedAt = u.CreatedAt,
+                    LastLogin = u.LastLogin,
+                    IsVerified = u.IsVerified,
+                    Bio = u.Bio
+                })
+                .ToDictionaryAsync(u => u.Id);
+
+            return messages
+                .Select(m => new MessageDto
+                {
+                    Id = m.Id,
+                    Content = m.Content,
+                    IsRead = m.IsRead,
+                    CreatedAt = m.CreatedAt,
+                    Sender = users.GetValueOrDefault(m.SenderId),
+                    Receiver = users.GetValueOrDefault(m.ReceiverId)
+                })
+                .ToList();
         }
 
         public async Task<List<ChatPreviewDto>> GetUserChats(int userId)
         {
-            var lastMessages = await _context.Messages
-                .Include(m => m.Sender)
-                .Include(m => m.Receiver)
-                .Where(m => m.SenderId == userId || m.ReceiverId == userId)
-                .GroupBy(m => m.SenderId == userId ? m.ReceiverId : m.SenderId)
-                .Select(g => new
+            var query = from m in _context.Messages
+                       where m.SenderId == userId || m.ReceiverId == userId
+                       group m by m.SenderId == userId ? m.ReceiverId : m.SenderId into g
+                       select new
+                       {
+                           OtherUserId = g.Key,
+                           LastMessage = g.OrderByDescending(x => x.CreatedAt).First(),
+                           UnreadCount = g.Count(x => !x.IsRead && x.ReceiverId == userId)
+                       };
+
+            var results = await query.ToListAsync();
+            
+            var otherUserIds = results.Select(x => x.OtherUserId).ToList();
+            var users = await _context.Users
+                .Where(u => otherUserIds.Contains(u.Id))
+                .Select(u => new UserResponseDto
                 {
-                    OtherUserId = g.Key,
-                    LastMessage = g.OrderByDescending(m => m.CreatedAt).First(),
-                    UnreadCount = g.Count(m => !m.IsRead && m.ReceiverId == userId)
+                    Id = u.Id,
+                    Username = u.Username,
+                    Email = u.Email,
+                    AvatarUrl = u.AvatarUrl,
+                    Status = u.Status,
+                    CreatedAt = u.CreatedAt,
+                    LastLogin = u.LastLogin,
+                    IsVerified = u.IsVerified,
+                    Bio = u.Bio
                 })
-                .ToListAsync();
+                .ToDictionaryAsync(u => u.Id);
 
-            var chatPreviews = new List<ChatPreviewDto>();
-            foreach (var chat in lastMessages)
-            {
-                var otherUser = await _userService.GetUserByIdAsync(chat.OtherUserId);
-                chatPreviews.Add(new ChatPreviewDto
+            return results
+                .Select(chat => new ChatPreviewDto
                 {
-                    User = new UserResponseDto
+                    User = users.GetValueOrDefault(chat.OtherUserId),
+                    LastMessage = new MessageDto
                     {
-                        Id = otherUser.Id,
-                        Username = otherUser.Username,
-                        Email = otherUser.Email,
-                        AvatarUrl = otherUser.AvatarUrl,
-                        Status = otherUser.Status,
-                        CreatedAt = otherUser.CreatedAt,
-                        LastLogin = otherUser.LastLogin,
-                        IsVerified = otherUser.IsVerified,
-                        Bio = otherUser.Bio
+                        Id = chat.LastMessage.Id,
+                        Content = chat.LastMessage.Content,
+                        IsRead = chat.LastMessage.IsRead,
+                        CreatedAt = chat.LastMessage.CreatedAt,
+                        Sender = users.GetValueOrDefault(chat.LastMessage.SenderId),
+                        Receiver = users.GetValueOrDefault(chat.LastMessage.ReceiverId)
                     },
-                    LastMessage = await MapToMessageDto(chat.LastMessage),
                     UnreadCount = chat.UnreadCount
-                });
-            }
-
-            return chatPreviews.OrderByDescending(c => c.LastMessage.CreatedAt).ToList();
+                })
+                .OrderByDescending(c => c.LastMessage.CreatedAt)
+                .ToList();
         }
 
         public async Task MarkMessagesAsRead(int userId, int otherUserId)

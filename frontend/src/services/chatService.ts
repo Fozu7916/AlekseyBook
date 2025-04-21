@@ -141,15 +141,45 @@ export class ChatService {
   }
 
   public async sendTypingStatus(userId: string, isTyping: boolean) {
+    console.log('Отправка статуса печатания:', { userId, isTyping });
     if (this.connection?.state === 'Connected') {
       try {
-        await this.connection.invoke('SendTypingStatus', userId, isTyping);
-        console.log('Отправлен статус печатания:', userId, isTyping);
+        // Получаем текущего пользователя для отправки
+        const currentUser = await userService.getCurrentUser();
+        if (!currentUser) {
+          console.error('Не удалось получить текущего пользователя');
+          return;
+        }
+
+        // Отправляем и senderId, и receiverId
+        await this.connection.invoke('SendTypingStatus', {
+          senderId: currentUser.id.toString(),
+          receiverId: userId,
+          isTyping: isTyping
+        });
+        console.log('Статус печатания успешно отправлен');
       } catch (err) {
-        console.error('Error sending typing status:', err);
+        console.error('Ошибка отправки статуса печатания:', err);
+        // Пробуем переподключиться и отправить снова
+        try {
+          await this.startConnection();
+          if (this.connection?.state === 'Connected') {
+            const currentUser = await userService.getCurrentUser();
+            if (currentUser) {
+              await this.connection.invoke('SendTypingStatus', {
+                senderId: currentUser.id.toString(),
+                receiverId: userId,
+                isTyping: isTyping
+              });
+              console.log('Статус печатания отправлен после переподключения');
+            }
+          }
+        } catch (retryErr) {
+          console.error('Ошибка повторной отправки статуса печатания:', retryErr);
+        }
       }
     } else {
-      console.warn('SignalR not connected');
+      console.warn('SignalR не подключен, невозможно отправить статус печатания');
     }
   }
 
@@ -211,7 +241,7 @@ export class ChatService {
 
     // Обработчик статуса печатания
     this.connection.on('ReceiveTypingStatus', (userId: string, isTyping: boolean) => {
-      console.log('Получен статус печатания от сервера:', userId, isTyping);
+      console.log('Получен статус печатания от сервера:', { userId, isTyping });
       this.typingCallbacks.forEach(callback => {
         try {
           callback(userId, isTyping);
@@ -238,8 +268,17 @@ export class ChatService {
       console.log('SignalR переподключается...');
     });
 
-    this.connection.onreconnected(() => {
+    this.connection.onreconnected(async () => {
       console.log('SignalR переподключен');
+      try {
+        const currentUser = await userService.getCurrentUser();
+        if (currentUser && this.connection?.state === 'Connected') {
+          await this.connection.invoke('JoinChat', currentUser.id.toString());
+          console.log('Переприсоединились к чату после переподключения');
+        }
+      } catch (err) {
+        console.error('Ошибка при переприсоединении к чату:', err);
+      }
     });
 
     this.connection.onclose(() => {
