@@ -16,11 +16,8 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.WithOrigins(
-                "http://localhost:3000", 
-                "http://localhost:5173",
-                "https://alekseybook.netlify.app"
-            )
+        builder
+            .SetIsOriginAllowed(_ => true) // Разрешаем все origins временно для отладки
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
@@ -112,11 +109,13 @@ app.UseCors(builder =>
     builder.WithOrigins(
             "http://localhost:3000",
             "http://localhost:5173",
-            "https://alekseybook.netlify.app"
+            "https://alekseybook.netlify.app",
+            "https://sweet-trust-production.up.railway.app"
         )
         .AllowAnyMethod()
         .AllowAnyHeader()
-        .AllowCredentials();
+        .AllowCredentials()
+        .SetIsOriginAllowed(origin => true); // Временно разрешаем все origins для отладки
 });
 
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
