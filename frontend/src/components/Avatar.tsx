@@ -1,5 +1,4 @@
 import React from 'react';
-import config from '../config';
 import styles from './Avatar.module.css';
 
 interface AvatarProps {
@@ -9,11 +8,7 @@ interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ avatarUrl, className = '', alt = 'Avatar' }) => {
-  const fullAvatarUrl = avatarUrl 
-    ? avatarUrl.startsWith('http') 
-      ? avatarUrl 
-      : `${config.baseUrl}${avatarUrl}`
-    : `${config.baseUrl}/uploads/default-avatar.png`;
+  const fullAvatarUrl = avatarUrl || '/images/default-avatar.svg';
 
   return (
     <div className={`${styles.avatarContainer} ${className}`}>
