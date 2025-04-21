@@ -69,6 +69,19 @@ class UserService {
     this.token = localStorage.getItem('token');
   }
 
+  private normalizeAvatarUrl(avatarUrl?: string | null): string | undefined {
+    if (!avatarUrl) return undefined;
+    if (avatarUrl.startsWith('http')) return avatarUrl;
+    return `${this.baseUrl}/api${avatarUrl}`;
+  }
+
+  private normalizeUser(user: User): User {
+    return {
+      ...user,
+      avatarUrl: this.normalizeAvatarUrl(user.avatarUrl)
+    };
+  }
+
   private async request(endpoint: string, options: RequestInit = {}) {
     try {
       const url = `${this.baseUrl}${endpoint}`;
@@ -128,10 +141,11 @@ class UserService {
       });
 
       this.token = response.token;
+      const normalizedUser = this.normalizeUser(response.user);
       localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
 
-      return response;
+      return { token: response.token, user: normalizedUser };
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -152,10 +166,11 @@ class UserService {
       });
 
       this.token = response.token;
+      const normalizedUser = this.normalizeUser(response.user);
       localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
 
-      return response;
+      return { token: response.token, user: normalizedUser };
     } catch (error) {
       console.error('Register error:', error);
       throw error;
@@ -165,14 +180,16 @@ class UserService {
   async getCurrentUser(): Promise<User | null> {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
-      return JSON.parse(savedUser);
+      const user = JSON.parse(savedUser);
+      return this.normalizeUser(user);
     }
     return null;
   }
 
   async getUserByUsername(username: string): Promise<User> {
     try {
-      return await this.request(`/users/username/${username}`);
+      const user = await this.request(`/users/username/${username}`);
+      return this.normalizeUser(user);
     } catch (error) {
       console.error('Get user by username error:', error);
       throw error;
@@ -389,55 +406,25 @@ class UserService {
 
   async getFriendsList(): Promise<FriendList> {
     try {
-      const response = await fetch(`${this.baseUrl}/friends`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при получении списка друзей';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await response.json();
+      const response = await this.request('/friends');
+      return {
+        friends: response.friends.map((user: User) => this.normalizeUser(user)),
+        pendingRequests: response.pendingRequests.map((user: User) => this.normalizeUser(user)),
+        sentRequests: response.sentRequests.map((user: User) => this.normalizeUser(user))
+      };
     } catch (error) {
       console.error('Get friends list error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при получении списка друзей');
+      throw error;
     }
   }
 
   async getUserFriendsList(userId: number): Promise<User[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/friends/user/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        let errorMessage = 'Ошибка при получении списка друзей пользователя';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
-      }
-
-      return await response.json();
+      const friends = await this.request(`/friends/${userId}`);
+      return friends.map((user: User) => this.normalizeUser(user));
     } catch (error) {
       console.error('Get user friends list error:', error);
-      throw error instanceof Error 
-        ? error 
-        : new Error('Ошибка при получении списка друзей пользователя');
+      throw error;
     }
   }
 
