@@ -149,11 +149,15 @@ namespace backend.Controllers
 
         private string GenerateJwtToken(User user)
         {
-            var jwtKey = _configuration["Jwt:Key"];
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET") ?? 
+                         _configuration["Jwt:Key"];
+
             if (string.IsNullOrEmpty(jwtKey))
             {
-                throw new InvalidOperationException("JWT:Key не настроен в конфигурации");
+                throw new InvalidOperationException("JWT key is not configured");
             }
+
+            Console.WriteLine($"JWT Key length: {Encoding.UTF8.GetBytes(jwtKey).Length * 8} bits");
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -166,8 +170,8 @@ namespace backend.Controllers
             };
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: Environment.GetEnvironmentVariable("API_URL") ?? _configuration["Jwt:Issuer"],
+                audience: Environment.GetEnvironmentVariable("CLIENT_URL") ?? _configuration["Jwt:Audience"],
                 claims: claims,
                 expires: DateTime.Now.AddDays(7),
                 signingCredentials: credentials
