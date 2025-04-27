@@ -460,34 +460,40 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         <div className="chats-header">
           <h2>Сообщения</h2>
         </div>
-        {isLoading && chats.length === 0 ? (
-          <div className="loading-message">Загрузка чатов...</div>
-        ) : (
-          <div className="chats">
-            {chats.map(chat => (
-              <div
-                key={chat.user.id}
-                className={`chat-item ${selectedChat?.id === chat.user.id ? 'active' : ''}`}
-                onClick={() => handleChatSelect(chat.user)}
-              >
-                <img
-                  src={chat.user.avatarUrl ? `http://localhost:5038${chat.user.avatarUrl}` : '/images/default-avatar.svg'}
-                  alt={chat.user.username}
-                  className="chat-avatar"
-                />
-                <div className="chat-info">
-                  <div className="chat-name">{chat.user.username}</div>
-                  <div className="chat-last-message">
-                    {chat.lastMessage?.content || 'Нет сообщений'}
-                  </div>
+        <div className="chats">
+          {isLoading && chats.length === 0 && (
+            <div data-testid="loading-indicator" className="loading">
+              Загрузка...
+            </div>
+          )}
+          {error && (
+            <div data-testid="error-message" className="error">
+              {error}
+            </div>
+          )}
+          {chats.map(chat => (
+            <div
+              key={chat.user.id}
+              className={`chat-item ${selectedChat?.id === chat.user.id ? 'active' : ''}`}
+              onClick={() => handleChatSelect(chat.user)}
+            >
+              <img
+                src={chat.user.avatarUrl ? `http://localhost:5038${chat.user.avatarUrl}` : '/images/default-avatar.svg'}
+                alt={chat.user.username}
+                className="chat-avatar"
+              />
+              <div className="chat-info">
+                <div className="chat-name">{chat.user.username}</div>
+                <div className="chat-last-message">
+                  {chat.lastMessage?.content || 'Нет сообщений'}
                 </div>
-                {chat.unreadCount > 0 && (
-                  <div className="unread-count">{chat.unreadCount}</div>
-                )}
               </div>
-            ))}
-          </div>
-        )}
+              {chat.unreadCount > 0 && (
+                <div className="unread-count">{chat.unreadCount}</div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="chat-content">
