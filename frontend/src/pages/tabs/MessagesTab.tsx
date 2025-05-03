@@ -382,7 +382,6 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     };
   }, [isActive, selectedChat, markMessagesAsRead]);
 
-  // Выносим проверку подключения в отдельную переменную
   const isConnected = chatService.isConnected();
 
   useEffect(() => {

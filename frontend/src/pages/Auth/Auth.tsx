@@ -30,7 +30,6 @@ const Auth: React.FC = () => {
         });
       }
       
-      // После успешного входа перезагружаем страницу
       window.location.href = '/';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
