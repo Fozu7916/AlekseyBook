@@ -1,35 +1,9 @@
-export class LoggerService {
-    private static instance: LoggerService;
-    private isDevelopment: boolean;
-
-    private constructor() {
-        this.isDevelopment = process.env.NODE_ENV === 'development';
-    }
-
-    public static getInstance(): LoggerService {
-        if (!LoggerService.instance) {
-            LoggerService.instance = new LoggerService();
-        }
-        return LoggerService.instance;
-    }
-
-    public error(message: string, error?: any, context?: any): void {
-        if (this.isDevelopment) {
-            console.error(`[Ошибка] ${message}`, error ? { error, context } : context);
-        }
-    }
-
-    public warn(message: string, context?: any): void {
-        if (this.isDevelopment) {
-            console.warn(`[Предупреждение] ${message}`, context || '');
-        }
-    }
-
-    public info(message: string, context?: any): void {
-        if (this.isDevelopment) {
-            console.log(`[Инфо] ${message}`, context || '');
-        }
+class Logger {
+    error(message: string, error?: unknown) {
+        const timestamp = new Date().toISOString();
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`[${timestamp}] ERROR: ${message}${error ? ` - ${errorMessage}` : ''}`);
     }
 }
 
-export const logger = LoggerService.getInstance(); 
+export const logger = new Logger(); 

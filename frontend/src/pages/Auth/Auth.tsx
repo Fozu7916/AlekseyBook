@@ -23,17 +23,14 @@ const Auth: React.FC = () => {
     try {
       let response;
       if (isRegister) {
-        logger.info('Попытка регистрации', { email: formData.email, username: formData.username });
         response = await userService.register(formData);
       } else {
-        logger.info('Попытка входа', { email: formData.email });
         response = await userService.login({
           email: formData.email,
           password: formData.password
         });
       }
       
-      logger.info('Успешная авторизация', { userId: response.user.id });
       window.location.href = '/';
     } catch (err) {
       logger.error('Ошибка авторизации', err);

@@ -61,10 +61,10 @@ export class ChatService {
           accessTokenFactory: () => localStorage.getItem('token') || '',
           transport: signalR.HttpTransportType.WebSockets,
           skipNegotiation: true,
-          logMessageContent: true
+          logMessageContent: false
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-        .configureLogging(signalR.LogLevel.Debug)
+        .configureLogging(signalR.LogLevel.None)
         .build();
 
       this.setupHandlers();
@@ -99,7 +99,6 @@ export class ChatService {
   }
 
   public async stopConnection() {
-    logger.info('Запрошена остановка подключения');
     this.shouldStop = true;
 
     if (this.connection) {
@@ -107,7 +106,6 @@ export class ChatService {
         const currentUser = await userService.getCurrentUser();
         if (currentUser && this.connection.state === 'Connected') {
           await this.connection.invoke('LeaveChat', currentUser.id.toString());
-          logger.info('Покинули чат', { userId: currentUser.id });
         }
       } catch (err) {
         logger.error('Ошибка при выходе из чата', err);
@@ -115,13 +113,10 @@ export class ChatService {
 
       try {
         await this.connection.stop();
-        logger.info('SignalR отключен');
       } catch (err) {
         logger.error('Ошибка при отключении SignalR', err);
       } finally {
         this.connection = null;
-        this.isConnecting = false;
-        this.connectionPromise = null;
       }
     }
   }

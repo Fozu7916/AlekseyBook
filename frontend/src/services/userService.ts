@@ -1,4 +1,3 @@
-import { chatService } from './chatService';
 import { logger } from './loggerService';
 
 export interface User {
@@ -404,7 +403,7 @@ class UserService {
 
   async getUserFriendsList(userId: number): Promise<User[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/users/${userId}/friends`, {
+      const response = await fetch(`${this.baseUrl}/friends/user/${userId}`, {
         headers: {
           'Authorization': `Bearer ${this.token}`
         }
@@ -470,13 +469,7 @@ class UserService {
         throw new Error(errorData.message || 'Ошибка при отправке сообщения');
       }
 
-      const message = await response.json();
-      
-      if (chatService.isConnected()) {
-        await chatService.sendMessage(message);
-      }
-
-      return message;
+      return await response.json();
     } catch (error) {
       logger.error('Ошибка при отправке сообщения:', error);
       throw error;

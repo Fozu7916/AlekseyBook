@@ -97,7 +97,7 @@ namespace backend.Controllers
             {
                 var userId = GetCurrentUserId();
                 await _messageService.MarkMessagesAsRead(userId, otherUserId);
-                return Ok();
+                return Ok(new { success = true });
             }
             catch (Exception ex)
             {

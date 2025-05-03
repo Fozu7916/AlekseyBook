@@ -341,7 +341,9 @@ namespace backend.UnitTests
             var result = await _controller.MarkMessagesAsRead(2);
 
             // Assert
-            Assert.IsType<OkResult>(result);
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var value = Assert.IsType<JsonResult>(new JsonResult(okResult.Value)).Value;
+            Assert.True((bool)value.GetType().GetProperty("success").GetValue(value));
         }
 
         [Fact]
