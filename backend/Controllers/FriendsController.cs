@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using backend.Models.DTOs;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 
 namespace backend.Controllers
 {
@@ -12,10 +13,12 @@ namespace backend.Controllers
     public class FriendsController : ControllerBase
     {
         private readonly IFriendService _friendService;
+        private readonly ILogger<FriendsController> _logger;
 
-        public FriendsController(IFriendService friendService)
+        public FriendsController(IFriendService friendService, ILogger<FriendsController> logger)
         {
             _friendService = friendService;
+            _logger = logger;
         }
 
         private int GetCurrentUserId()
@@ -38,6 +41,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при отправке запроса в друзья от пользователя {UserId} к {FriendId}", 
+                    GetCurrentUserId(), friendId);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -53,6 +58,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при принятии запроса в друзья от пользователя {FriendId} пользователем {UserId}", 
+                    friendId, GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -70,6 +77,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при отклонении запроса в друзья от пользователя {FriendId} пользователем {UserId}", 
+                    friendId, GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -87,6 +96,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при удалении из друзей пользователя {FriendId} пользователем {UserId}", 
+                    friendId, GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -104,6 +115,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при блокировке пользователя {BlockedUserId} пользователем {UserId}", 
+                    userId, GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -119,6 +132,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при получении списка друзей пользователя {UserId}", 
+                    GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -133,6 +148,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при получении списка друзей пользователя {TargetUserId}", userId);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -148,6 +164,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при проверке статуса дружбы между пользователями {UserId} и {FriendId}", 
+                    GetCurrentUserId(), friendId);
                 return BadRequest(new { message = ex.Message });
             }
         }

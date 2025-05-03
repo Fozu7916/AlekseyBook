@@ -34,24 +34,19 @@ namespace backend.Controllers
         {
             try
             {
-                _logger.LogInformation("Attempting login for email: {Email}", loginData.Email);
-            
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == loginData.Email);
 
                 if (user == null)
                 {
-                    _logger.LogWarning("Login failed: User not found for email {Email}", loginData.Email);
                     return BadRequest(new { message = "Неверный email или пароль" });
                 }
 
                 if (!_userService.VerifyPassword(loginData.Password, user.PasswordHash))
                 {
-                    _logger.LogWarning("Login failed: Invalid password for user {Email}", loginData.Email);
                     return BadRequest(new { message = "Неверный email или пароль" });
                 }
 
-                _logger.LogInformation("User {Email} logged in successfully", loginData.Email);
                 user.LastLogin = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
@@ -76,7 +71,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during login for user {Email}", loginData.Email);
+                _logger.LogError(ex, "Ошибка при попытке входа пользователя {Email}", loginData.Email);
                 return StatusCode(500, new { message = "Ошибка при входе в систему" });
             }
         }
@@ -86,14 +81,10 @@ namespace backend.Controllers
         {
             try
             {
-                _logger.LogInformation("Attempting registration for username: {Username}, email: {Email}", 
-                    registerData.Username, registerData.Email);
-
                 var existingUserByEmail = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == registerData.Email);
                 if (existingUserByEmail != null)
                 {
-                    _logger.LogWarning("Registration failed: Email {Email} already exists", registerData.Email);
                     return BadRequest(new { message = "Этот email уже зарегистрирован" });
                 }
 
@@ -101,7 +92,6 @@ namespace backend.Controllers
                     .FirstOrDefaultAsync(u => u.Username == registerData.Username);
                 if (existingUserByUsername != null)
                 {
-                    _logger.LogWarning("Registration failed: Username {Username} already exists", registerData.Username);
                     return BadRequest(new { message = "Это имя пользователя уже занято" });
                 }
 
@@ -118,9 +108,6 @@ namespace backend.Controllers
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
-
-                _logger.LogInformation("User registered successfully: {Username} (ID: {UserId})", 
-                    user.Username, user.Id);
 
                 var token = GenerateJwtToken(user);
 
@@ -143,7 +130,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during registration for user {Username}", registerData.Username);
+                _logger.LogError(ex, "Ошибка при регистрации пользователя {Username}", registerData.Username);
                 return StatusCode(500, new { message = "Ошибка при регистрации" });
             }
         }
@@ -153,7 +140,7 @@ namespace backend.Controllers
             var jwtKey = _configuration["Jwt:Key"];
             if (string.IsNullOrEmpty(jwtKey))
             {
-                _logger.LogError("JWT:Key not configured");
+                _logger.LogError("JWT:Key не настроен в конфигурации");
                 throw new InvalidOperationException("JWT:Key не настроен в конфигурации");
             }
 

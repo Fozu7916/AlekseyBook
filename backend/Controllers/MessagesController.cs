@@ -5,6 +5,7 @@ using backend.Models.DTOs;
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
+using Microsoft.Extensions.Logging;
 
 namespace backend.Controllers
 {
@@ -15,11 +16,13 @@ namespace backend.Controllers
     {
         private readonly IMessageService _messageService;
         private readonly IHubContext<ChatHub> _hubContext;
+        private readonly ILogger<MessagesController> _logger;
 
-        public MessagesController(IMessageService messageService, IHubContext<ChatHub> hubContext)
+        public MessagesController(IMessageService messageService, IHubContext<ChatHub> hubContext, ILogger<MessagesController> logger)
         {
             _messageService = messageService;
             _hubContext = hubContext;
+            _logger = logger;
         }
 
         private int GetCurrentUserId()
@@ -47,6 +50,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при отправке сообщения от пользователя {UserId} к {ReceiverId}", 
+                    GetCurrentUserId(), messageDto.ReceiverId);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -62,6 +67,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при получении сообщений чата между пользователями {UserId} и {OtherUserId}", 
+                    GetCurrentUserId(), otherUserId);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -77,6 +84,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при получении списка чатов пользователя {UserId}", 
+                    GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -92,6 +101,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при отметке сообщений как прочитанных между пользователями {UserId} и {OtherUserId}", 
+                    GetCurrentUserId(), otherUserId);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -107,6 +118,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Критическая ошибка при получении количества непрочитанных сообщений пользователя {UserId}", 
+                    GetCurrentUserId());
                 return BadRequest(new { message = ex.Message });
             }
         }

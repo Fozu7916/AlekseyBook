@@ -9,6 +9,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace backend.UnitTests
 {
@@ -16,6 +17,7 @@ namespace backend.UnitTests
     {
         private readonly ApplicationDbContext _context;
         private readonly Mock<IFriendService> _friendServiceMock;
+        private readonly Mock<ILogger<FriendsController>> _loggerMock;
         private readonly FriendsController _controller;
 
         public FriendsControllerTests()
@@ -27,8 +29,9 @@ namespace backend.UnitTests
             _context = new ApplicationDbContext(options);
 
             _friendServiceMock = new Mock<IFriendService>();
+            _loggerMock = new Mock<ILogger<FriendsController>>();
 
-            _controller = new FriendsController(_friendServiceMock.Object);
+            _controller = new FriendsController(_friendServiceMock.Object, _loggerMock.Object);
 
             // Настраиваем ClaimsPrincipal для имитации авторизованного пользователя
             var claims = new List<Claim>

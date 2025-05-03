@@ -52,14 +52,12 @@ namespace backend.Controllers
         {
             try
             {
-                _logger.LogInformation("Received registration request for username: {Username}", registerUserDto.Username);
                 var response = await _userService.Register(registerUserDto);
-                _logger.LogInformation("Registration successful for username: {Username}", registerUserDto.Username);
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Registration failed for username: {Username}", registerUserDto.Username);
+                _logger.LogError(ex, "Критическая ошибка при регистрации пользователя {Username}", registerUserDto.Username);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -79,7 +77,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user {UserId}", id);
+                _logger.LogError(ex, "Критическая ошибка при обновлении пользователя {UserId}", id);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -102,7 +100,6 @@ namespace backend.Controllers
         {
             try
             {
-                _logger.LogInformation("Updating avatar for user {UserId}", id);
                 var user = await _userService.UpdateAvatar(id, avatar);
                 if (user == null)
                 {
@@ -112,7 +109,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating avatar for user {UserId}", id);
+                _logger.LogError(ex, "Критическая ошибка при обновлении аватара пользователя {UserId}", id);
                 return BadRequest(new { message = ex.Message });
             }
         }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace backend.UnitTests
 {
@@ -15,6 +16,7 @@ namespace backend.UnitTests
     {
         private readonly Mock<IMessageService> _messageServiceMock;
         private readonly Mock<IHubContext<ChatHub>> _hubContextMock;
+        private readonly Mock<ILogger<MessagesController>> _loggerMock;
         private readonly MessagesController _controller;
         private readonly Mock<IClientProxy> _clientProxyMock;
         private readonly Mock<IHubClients> _hubClientsMock;
@@ -23,6 +25,7 @@ namespace backend.UnitTests
         {
             _messageServiceMock = new Mock<IMessageService>();
             _hubContextMock = new Mock<IHubContext<ChatHub>>();
+            _loggerMock = new Mock<ILogger<MessagesController>>();
             _clientProxyMock = new Mock<IClientProxy>();
             _hubClientsMock = new Mock<IHubClients>();
 
@@ -31,7 +34,7 @@ namespace backend.UnitTests
             _hubContextMock.Setup(x => x.Clients)
                 .Returns(_hubClientsMock.Object);
 
-            _controller = new MessagesController(_messageServiceMock.Object, _hubContextMock.Object);
+            _controller = new MessagesController(_messageServiceMock.Object, _hubContextMock.Object, _loggerMock.Object);
 
             var claims = new List<Claim>
             {

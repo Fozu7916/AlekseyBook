@@ -19,8 +19,6 @@ namespace backend.Hubs
         {
             UserConnections[Context.ConnectionId] = userId;
             await Groups.AddToGroupAsync(Context.ConnectionId, userId);
-            _logger.LogInformation("User {UserId} joined chat. Connection ID: {ConnectionId}", 
-                userId, Context.ConnectionId);
         }
 
         public async Task LeaveChat(string userId)
@@ -29,8 +27,6 @@ namespace backend.Hubs
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
                 UserConnections.Remove(Context.ConnectionId);
-                _logger.LogInformation("User {UserId} left chat. Connection ID: {ConnectionId}", 
-                    userId, Context.ConnectionId);
             }
         }
 
@@ -38,13 +34,12 @@ namespace backend.Hubs
         {
             if (UserConnections.TryGetValue(Context.ConnectionId, out string senderId))
             {
-                _logger.LogDebug("Typing status from {SenderId} to {ReceiverId}: {IsTyping}", 
-                    senderId, receiverId, isTyping);
                 await Clients.Group(receiverId).SendAsync("ReceiveTypingStatus", senderId, isTyping);
             }
             else
             {
-                _logger.LogWarning("User not found for connection {ConnectionId}", Context.ConnectionId);
+                _logger.LogWarning("Попытка отправить статус набора текста от неизвестного пользователя. ConnectionId: {ConnectionId}", 
+                    Context.ConnectionId);
             }
         }
 
@@ -52,14 +47,22 @@ namespace backend.Hubs
         {
             if (UserConnections.TryGetValue(Context.ConnectionId, out string senderId))
             {
-                _logger.LogInformation("Sending message from {SenderId} to {ReceiverId}", 
-                    senderId, message.ReceiverId);
-                await Clients.Group(message.ReceiverId.ToString()).SendAsync("ReceiveMessage", message);
-                await Clients.Group(senderId).SendAsync("ReceiveMessage", message);
+                try 
+                {
+                    await Clients.Group(message.ReceiverId.ToString()).SendAsync("ReceiveMessage", message);
+                    await Clients.Group(senderId).SendAsync("ReceiveMessage", message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Ошибка при отправке сообщения от {SenderId} к {ReceiverId}", 
+                        senderId, message.ReceiverId);
+                    throw;
+                }
             }
             else
             {
-                _logger.LogWarning("User not found for connection {ConnectionId}", Context.ConnectionId);
+                _logger.LogWarning("Попытка отправить сообщение от неизвестного пользователя. ConnectionId: {ConnectionId}", 
+                    Context.ConnectionId);
             }
         }
 
@@ -69,8 +72,11 @@ namespace backend.Hubs
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
                 UserConnections.Remove(Context.ConnectionId);
-                _logger.LogInformation("User {UserId} disconnected. Connection ID: {ConnectionId}", 
-                    userId, Context.ConnectionId);
+                
+                if (exception != null)
+                {
+                    _logger.LogError(exception, "Пользователь {UserId} отключился с ошибкой", userId);
+                }
             }
             await base.OnDisconnectedAsync(exception);
         }
