@@ -1,0 +1,61 @@
+# Папки сборки и бинарные файлы
+bin/
+obj/
+Debug/
+Release/
+TestResults/
+
+# Файлы Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+
+# Файлы тестового покрытия
+*.coverage
+*.coveragexml
+coverage.json
+coverage/
+
+# Файлы MSTest
+TestResults/
+
+# Файлы NUnit
+TestResult.xml
+nunit-*.xml
+
+# Файлы xUnit
+xunit.runner.json
+
+# Временные файлы
+[Tt]emp/
+[Tt]mp/
+
+# Файлы логов
+*.log
+logs/
+
+# Файлы конфигурации среды
+.env
+.env.test
+appsettings.*.json
+!appsettings.json
+
+# Файлы IntelliJ Rider
+.idea/
+*.sln.iml
+
+# Файлы Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Файлы резервных копий
+*~
+*.bak
+*.swp 
