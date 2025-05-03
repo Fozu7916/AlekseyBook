@@ -308,11 +308,11 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
   const handleChatSelect = useCallback(async (user: User) => {
     if (selectedChat?.id === user.id) {
-      console.log('Чат уже выбран:', user.id);
+      logger.info('Чат уже выбран', { userId: user.id });
       return;
     }
 
-    console.log('Выбираем новый чат:', user.id);
+    logger.info('Выбираем новый чат', { userId: user.id });
     setSelectedChat(user);
     setMessages([]);
     navigate(`/messages/${user.id}`);
@@ -323,7 +323,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       await userService.markMessagesAsRead(user.id);
       
       const now = Date.now();
-      if (now - lastChatsUpdateRef.current >= 5000) { // Проверяем, прошло ли 5 секунд с последнего обновления
+      if (now - lastChatsUpdateRef.current >= 5000) {
         loadChats(false);
       }
     } catch (err) {

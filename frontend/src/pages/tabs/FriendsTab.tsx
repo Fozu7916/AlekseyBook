@@ -39,7 +39,6 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const handleAcceptFriend = async (userId: number) => {
     try {
       await userService.acceptFriendRequest(userId);
-      // Обновляем списки после принятия заявки
       const friendsList = await userService.getFriendsList();
       setFriends(friendsList.friends);
       setPendingRequests(friendsList.pendingRequests);
@@ -51,7 +50,6 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const handleDeclineFriend = async (userId: number) => {
     try {
       await userService.declineFriendRequest(userId);
-      // Обновляем список входящих заявок
       setPendingRequests(prev => prev.filter(user => user.id !== userId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при отклонении заявки');
@@ -61,7 +59,6 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const handleRemoveFriend = async (userId: number) => {
     try {
       await userService.removeFriend(userId);
-      // Обновляем список друзей
       setFriends(prev => prev.filter(user => user.id !== userId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при удалении из друзей');
@@ -71,7 +68,6 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const handleCancelRequest = async (userId: number) => {
     try {
       await userService.declineFriendRequest(userId);
-      // Обновляем список исходящих заявок
       setSentRequests(prev => prev.filter(user => user.id !== userId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при отмене заявки');

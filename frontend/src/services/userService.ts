@@ -148,7 +148,7 @@ class UserService {
 
       return response;
     } catch (error) {
-      console.error('Register error:', error);
+      logger.error('Ошибка при регистрации', error);
       throw error;
     }
   }
@@ -165,7 +165,7 @@ class UserService {
     try {
       return await this.request(`/users/username/${username}`);
     } catch (error) {
-      console.error('Get user by username error:', error);
+      logger.error('Ошибка при получении пользователя по имени', error);
       throw error;
     }
   }
@@ -218,7 +218,7 @@ class UserService {
       localStorage.setItem('user', JSON.stringify(updatedUser));
       return updatedUser;
     } catch (error) {
-      console.error('Update avatar error:', error);
+      logger.error('Ошибка при обновлении аватара', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при загрузке аватара');
@@ -262,7 +262,7 @@ class UserService {
 
       return await response.json();
     } catch (error) {
-      console.error('Send friend request error:', error);
+      logger.error('Ошибка при отправке запроса в друзья', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при отправке запроса в друзья');
@@ -290,7 +290,7 @@ class UserService {
 
       return await response.json();
     } catch (error) {
-      console.error('Accept friend request error:', error);
+      logger.error('Ошибка при принятии запроса в друзья', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при принятии запроса в друзья');
@@ -316,7 +316,7 @@ class UserService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Decline friend request error:', error);
+      logger.error('Ошибка при отклонении запроса в друзья', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при отклонении запроса в друзья');
@@ -342,7 +342,7 @@ class UserService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Remove friend error:', error);
+      logger.error('Ошибка при удалении из друзей', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при удалении из друзей');
@@ -368,7 +368,7 @@ class UserService {
         throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Block user error:', error);
+      logger.error('Ошибка при блокировке пользователя', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при блокировке пользователя');
@@ -395,7 +395,7 @@ class UserService {
 
       return await response.json();
     } catch (error) {
-      console.error('Get friends list error:', error);
+      logger.error('Ошибка при получении списка друзей', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при получении списка друзей');
@@ -404,25 +404,19 @@ class UserService {
 
   async getUserFriendsList(userId: number): Promise<User[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/friends/user/${userId}`, {
+      const response = await fetch(`${this.baseUrl}/users/${userId}/friends`, {
         headers: {
           'Authorization': `Bearer ${this.token}`
         }
       });
 
       if (!response.ok) {
-        let errorMessage = 'Ошибка при получении списка друзей пользователя';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch {
-        }
-        throw new Error(errorMessage);
+        throw new Error('Ошибка при получении списка друзей пользователя');
       }
 
       return await response.json();
     } catch (error) {
-      console.error('Get user friends list error:', error);
+      logger.error('Ошибка при получении списка друзей пользователя', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при получении списка друзей пользователя');
@@ -449,7 +443,7 @@ class UserService {
 
       return await response.json();
     } catch (error) {
-      console.error('Check friendship status error:', error);
+      logger.error('Ошибка при проверке статуса дружбы', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при проверке статуса дружбы');

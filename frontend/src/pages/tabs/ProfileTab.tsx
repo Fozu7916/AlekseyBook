@@ -4,6 +4,7 @@ import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
 import './ProfileTab.css';
+import { logger } from '../../services/loggerService';
 
 interface ProfileTabProps extends TabProps {
   username: string;
@@ -150,11 +151,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             setFriendRequestReceived(friendsList.pendingRequests.some(friend => friend.id === userData.id));
           }
         } catch (err) {
-          console.error('Ошибка при получении списка друзей:', err);
-          setFriends([]);
-          setIsFriend(false);
-          setFriendRequestSent(false);
-          setFriendRequestReceived(false);
+          logger.error('Ошибка при получении списка друзей', err);
+          setError('Не удалось загрузить список друзей');
         } finally {
           setIsLoadingFriends(false);
         }
