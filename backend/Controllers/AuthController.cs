@@ -19,12 +19,14 @@ namespace backend.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IUserService _userService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(ApplicationDbContext context, IConfiguration configuration, IUserService userService)
+        public AuthController(ApplicationDbContext context, IConfiguration configuration, IUserService userService, ILogger<AuthController> logger)
         {
             _context = context;
             _configuration = configuration;
             _userService = userService;
+            _logger = logger;
         }
 
         [HttpPost("login")]
@@ -32,30 +34,28 @@ namespace backend.Controllers
         {
             try
             {
-                Console.WriteLine($"Attempting login for email: {loginData.Email}");
+                _logger.LogInformation("Attempting login for email: {Email}", loginData.Email);
             
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == loginData.Email);
 
                 if (user == null)
                 {
-                    Console.WriteLine("User not found");
+                    _logger.LogWarning("Login failed: User not found for email {Email}", loginData.Email);
                     return BadRequest(new { message = "Неверный email или пароль" });
                 }
 
-                Console.WriteLine("User found, verifying password");
                 if (!_userService.VerifyPassword(loginData.Password, user.PasswordHash))
                 {
-                    Console.WriteLine("Password verification failed");
+                    _logger.LogWarning("Login failed: Invalid password for user {Email}", loginData.Email);
                     return BadRequest(new { message = "Неверный email или пароль" });
                 }
 
-                Console.WriteLine("Password verified successfully");
+                _logger.LogInformation("User {Email} logged in successfully", loginData.Email);
                 user.LastLogin = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 var token = GenerateJwtToken(user);
-                Console.WriteLine("JWT token generated successfully");
 
                 return Ok(new AuthResponseDto
                 {
@@ -76,9 +76,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during login: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                return StatusCode(500, new { message = $"Ошибка при входе в систему: {ex.Message}" });
+                _logger.LogError(ex, "Error during login for user {Email}", loginData.Email);
+                return StatusCode(500, new { message = "Ошибка при входе в систему" });
             }
         }
 
@@ -87,12 +86,14 @@ namespace backend.Controllers
         {
             try
             {
-                Console.WriteLine($"Attempting registration for username: {registerData.Username}, email: {registerData.Email}");
+                _logger.LogInformation("Attempting registration for username: {Username}, email: {Email}", 
+                    registerData.Username, registerData.Email);
 
                 var existingUserByEmail = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == registerData.Email);
                 if (existingUserByEmail != null)
                 {
+                    _logger.LogWarning("Registration failed: Email {Email} already exists", registerData.Email);
                     return BadRequest(new { message = "Этот email уже зарегистрирован" });
                 }
 
@@ -100,6 +101,7 @@ namespace backend.Controllers
                     .FirstOrDefaultAsync(u => u.Username == registerData.Username);
                 if (existingUserByUsername != null)
                 {
+                    _logger.LogWarning("Registration failed: Username {Username} already exists", registerData.Username);
                     return BadRequest(new { message = "Это имя пользователя уже занято" });
                 }
 
@@ -117,10 +119,10 @@ namespace backend.Controllers
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"User created successfully with ID: {user.Id}");
+                _logger.LogInformation("User registered successfully: {Username} (ID: {UserId})", 
+                    user.Username, user.Id);
 
                 var token = GenerateJwtToken(user);
-                Console.WriteLine("JWT token generated successfully");
 
                 return Ok(new AuthResponseDto
                 {
@@ -141,9 +143,8 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during registration: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                return StatusCode(500, new { message = $"Ошибка при регистрации: {ex.Message}" });
+                _logger.LogError(ex, "Error during registration for user {Username}", registerData.Username);
+                return StatusCode(500, new { message = "Ошибка при регистрации" });
             }
         }
 
@@ -152,6 +153,7 @@ namespace backend.Controllers
             var jwtKey = _configuration["Jwt:Key"];
             if (string.IsNullOrEmpty(jwtKey))
             {
+                _logger.LogError("JWT:Key not configured");
                 throw new InvalidOperationException("JWT:Key не настроен в конфигурации");
             }
 

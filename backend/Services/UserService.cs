@@ -39,19 +39,22 @@ namespace backend.Services
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<UserService> _logger;
 
-        public UserService(ApplicationDbContext context, IWebHostEnvironment environment, IConfiguration configuration)
+        public UserService(ApplicationDbContext context, IWebHostEnvironment environment, IConfiguration configuration, ILogger<UserService> logger)
         {
             _context = context;
             _environment = environment;
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<AuthResponseDto> Register(RegisterUserDto registerUserDto)
         {
             try
             {
-                Console.WriteLine($"Attempting registration for username: {registerUserDto.Username}, email: {registerUserDto.Email}");
+                _logger.LogInformation("Attempting registration for username: {Username}, email: {Email}",
+                    registerUserDto.Username, registerUserDto.Email);
 
                 var existingUserByEmail = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == registerUserDto.Email);
@@ -83,7 +86,7 @@ namespace backend.Services
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"User created successfully with ID: {user.Id}");
+                _logger.LogInformation("User created successfully with ID: {UserId}", user.Id);
 
                 var userDto = MapToDto(user);
                 var token = GenerateJwtToken(userDto);
@@ -96,8 +99,7 @@ namespace backend.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error during registration: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error during registration for username: {Username}", registerUserDto.Username);
                 throw;
             }
         }
@@ -199,8 +201,8 @@ namespace backend.Services
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error updating user: {ex}");
-                throw new Exception("Ошибка при обновлении пользователя", ex);
+                _logger.LogError(ex, "Error updating user {UserId}", id);
+                throw;
             }
         }
 
@@ -229,34 +231,44 @@ namespace backend.Services
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return null;
 
+            if (avatar.Length > 10 * 1024 * 1024) // 10MB
+            {
+                throw new Exception("Размер файла превышает 10MB");
+            }
+
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif" };
+            if (!allowedTypes.Contains(avatar.ContentType.ToLower()))
+            {
+                throw new Exception("Недопустимый формат файла. Разрешены только JPEG, PNG и GIF");
+            }
+
             var fileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
             var uploadsFolder = Path.Combine(_environment.ContentRootPath, "wwwroot", "uploads", "avatars");
             
-            Console.WriteLine($"Uploading avatar to: {uploadsFolder}");
+            _logger.LogInformation("Uploading avatar for user {UserId} to {UploadPath}", userId, uploadsFolder);
             
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
-                Console.WriteLine($"Created directory: {uploadsFolder}");
+                _logger.LogInformation("Created avatars directory: {UploadPath}", uploadsFolder);
             }
 
             var filePath = Path.Combine(uploadsFolder, fileName);
-            Console.WriteLine($"Saving file to: {filePath}");
+            _logger.LogDebug("Saving avatar file to: {FilePath}", filePath);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await avatar.CopyToAsync(stream);
             }
-            Console.WriteLine($"File saved successfully: {filePath}");
 
             if (!string.IsNullOrEmpty(user.AvatarUrl))
             {
                 var oldFilePath = Path.Combine(_environment.ContentRootPath, "wwwroot", user.AvatarUrl.TrimStart('/'));
-                Console.WriteLine($"Checking old file: {oldFilePath}");
+                _logger.LogDebug("Checking old avatar file: {OldFilePath}", oldFilePath);
                 if (File.Exists(oldFilePath))
                 {
                     File.Delete(oldFilePath);
-                    Console.WriteLine($"Old file deleted: {oldFilePath}");
+                    _logger.LogInformation("Deleted old avatar file: {OldFilePath}", oldFilePath);
                 }
             }
 
@@ -264,7 +276,8 @@ namespace backend.Services
             user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            Console.WriteLine($"Avatar URL updated in database: {user.AvatarUrl}");
+            _logger.LogInformation("Updated avatar URL in database for user {UserId}: {AvatarUrl}", 
+                userId, user.AvatarUrl);
             
             return MapToDto(user);
         }
@@ -372,19 +385,11 @@ namespace backend.Services
             var user = await _context.Users.FindAsync(id);
             if (user == null) throw new Exception("Пользователь не найден");
 
-            if (string.IsNullOrEmpty(avatarUrl))
-            {
-                user.AvatarUrl = null;
-            }
-            else
-            {
-                user.AvatarUrl = avatarUrl;
-            }
-
+            user.AvatarUrl = avatarUrl;
             user.UpdatedAt = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
-            return user.AvatarUrl;
+
+            return avatarUrl;
         }
     }
 } 

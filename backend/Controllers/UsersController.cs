@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using backend.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace backend.Controllers
 {
@@ -10,10 +11,12 @@ namespace backend.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, ILogger<UsersController> logger)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         [HttpGet("{id}")]
@@ -49,14 +52,14 @@ namespace backend.Controllers
         {
             try
             {
-                Console.WriteLine($"Received registration request for username: {registerUserDto.Username}, email: {registerUserDto.Email}");
+                _logger.LogInformation("Received registration request for username: {Username}", registerUserDto.Username);
                 var response = await _userService.Register(registerUserDto);
-                Console.WriteLine("Registration successful");
+                _logger.LogInformation("Registration successful for username: {Username}", registerUserDto.Username);
                 return Ok(response);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Registration failed: {ex.Message}");
+                _logger.LogError(ex, "Registration failed for username: {Username}", registerUserDto.Username);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -76,6 +79,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating user {UserId}", id);
                 return BadRequest(new { message = ex.Message });
             }
         }
@@ -98,6 +102,7 @@ namespace backend.Controllers
         {
             try
             {
+                _logger.LogInformation("Updating avatar for user {UserId}", id);
                 var user = await _userService.UpdateAvatar(id, avatar);
                 if (user == null)
                 {
@@ -107,6 +112,7 @@ namespace backend.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating avatar for user {UserId}", id);
                 return BadRequest(new { message = ex.Message });
             }
         }

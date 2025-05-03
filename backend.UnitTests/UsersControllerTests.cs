@@ -9,6 +9,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace backend.UnitTests
 {
@@ -16,6 +17,7 @@ namespace backend.UnitTests
     {
         private readonly ApplicationDbContext _context;
         private readonly Mock<IUserService> _userServiceMock;
+        private readonly Mock<ILogger<UsersController>> _loggerMock;
         private readonly UsersController _controller;
 
         public UsersControllerTests()
@@ -26,8 +28,9 @@ namespace backend.UnitTests
             _context = new ApplicationDbContext(options);
 
             _userServiceMock = new Mock<IUserService>();
+            _loggerMock = new Mock<ILogger<UsersController>>();
 
-            _controller = new UsersController(_userServiceMock.Object);
+            _controller = new UsersController(_userServiceMock.Object, _loggerMock.Object);
 
             var claims = new List<Claim>
             {

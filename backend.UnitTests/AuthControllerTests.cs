@@ -8,6 +8,9 @@ using backend.Models;
 using backend.Models.DTOs;
 using backend.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace backend.UnitTests
 {
@@ -16,25 +19,45 @@ namespace backend.UnitTests
         private readonly Mock<IConfiguration> _configurationMock;
         private readonly Mock<IUserService> _userServiceMock;
         private readonly ApplicationDbContext _context;
+        private readonly Mock<ILogger<AuthController>> _loggerMock;
         private readonly AuthController _controller;
 
         public AuthControllerTests()
         {
             // Настраиваем in-memory базу данных для тестов
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseInMemoryDatabase(databaseName: "TestDb")
+                .UseInMemoryDatabase(databaseName: "TestAuthDb")
                 .Options;
             _context = new ApplicationDbContext(options);
 
             _configurationMock = new Mock<IConfiguration>();
             _userServiceMock = new Mock<IUserService>();
+            _loggerMock = new Mock<ILogger<AuthController>>();
 
             // Настраиваем конфигурацию JWT
             _configurationMock.Setup(x => x["Jwt:Key"]).Returns("your-test-secret-key-min-16-chars");
             _configurationMock.Setup(x => x["Jwt:Issuer"]).Returns("test-issuer");
             _configurationMock.Setup(x => x["Jwt:Audience"]).Returns("test-audience");
 
-            _controller = new AuthController(_context, _configurationMock.Object, _userServiceMock.Object);
+            _controller = new AuthController(
+                _context,
+                _configurationMock.Object,
+                _userServiceMock.Object,
+                _loggerMock.Object
+            );
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, "1"),
+                new Claim(ClaimTypes.Name, "testuser")
+            };
+            var identity = new ClaimsIdentity(claims, "TestAuthType");
+            var claimsPrincipal = new ClaimsPrincipal(identity);
+
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = claimsPrincipal }
+            };
         }
 
         [Fact]

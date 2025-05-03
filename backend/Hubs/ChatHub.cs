@@ -1,18 +1,26 @@
 using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using backend.Models;
+using Microsoft.Extensions.Logging;
 
 namespace backend.Hubs
 {
     public class ChatHub : Hub
     {
         private static Dictionary<string, string> UserConnections = new Dictionary<string, string>();
+        private readonly ILogger<ChatHub> _logger;
+
+        public ChatHub(ILogger<ChatHub> logger)
+        {
+            _logger = logger;
+        }
 
         public async Task JoinChat(string userId)
         {
             UserConnections[Context.ConnectionId] = userId;
             await Groups.AddToGroupAsync(Context.ConnectionId, userId);
-            Console.WriteLine($"User {userId} joined chat. Connection ID: {Context.ConnectionId}");
+            _logger.LogInformation("User {UserId} joined chat. Connection ID: {ConnectionId}", 
+                userId, Context.ConnectionId);
         }
 
         public async Task LeaveChat(string userId)
@@ -21,7 +29,8 @@ namespace backend.Hubs
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
                 UserConnections.Remove(Context.ConnectionId);
-                Console.WriteLine($"User {userId} left chat. Connection ID: {Context.ConnectionId}");
+                _logger.LogInformation("User {UserId} left chat. Connection ID: {ConnectionId}", 
+                    userId, Context.ConnectionId);
             }
         }
 
@@ -29,12 +38,13 @@ namespace backend.Hubs
         {
             if (UserConnections.TryGetValue(Context.ConnectionId, out string senderId))
             {
-                Console.WriteLine($"Typing status from {senderId} to {receiverId}: {isTyping}");
+                _logger.LogDebug("Typing status from {SenderId} to {ReceiverId}: {IsTyping}", 
+                    senderId, receiverId, isTyping);
                 await Clients.Group(receiverId).SendAsync("ReceiveTypingStatus", senderId, isTyping);
             }
             else
             {
-                Console.WriteLine($"User not found for connection {Context.ConnectionId}");
+                _logger.LogWarning("User not found for connection {ConnectionId}", Context.ConnectionId);
             }
         }
 
@@ -42,13 +52,14 @@ namespace backend.Hubs
         {
             if (UserConnections.TryGetValue(Context.ConnectionId, out string senderId))
             {
-                Console.WriteLine($"Sending message from {senderId} to {message.ReceiverId}");
+                _logger.LogInformation("Sending message from {SenderId} to {ReceiverId}", 
+                    senderId, message.ReceiverId);
                 await Clients.Group(message.ReceiverId.ToString()).SendAsync("ReceiveMessage", message);
                 await Clients.Group(senderId).SendAsync("ReceiveMessage", message);
             }
             else
             {
-                Console.WriteLine($"User not found for connection {Context.ConnectionId}");
+                _logger.LogWarning("User not found for connection {ConnectionId}", Context.ConnectionId);
             }
         }
 
@@ -58,7 +69,8 @@ namespace backend.Hubs
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
                 UserConnections.Remove(Context.ConnectionId);
-                Console.WriteLine($"User {userId} disconnected. Connection ID: {Context.ConnectionId}");
+                _logger.LogInformation("User {UserId} disconnected. Connection ID: {ConnectionId}", 
+                    userId, Context.ConnectionId);
             }
             await base.OnDisconnectedAsync(exception);
         }
