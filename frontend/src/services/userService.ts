@@ -1,6 +1,7 @@
 import { chatService } from './chatService';
+import { logger } from './loggerService';
 
-interface User {
+export interface User {
   id: number;
   username: string;
   email: string;
@@ -71,7 +72,6 @@ class UserService {
   private async request(endpoint: string, options: RequestInit = {}) {
     try {
       const url = `${this.baseUrl}${endpoint}`;
-      console.log('Making request to:', url);
       
       options.headers = {
         'Content-Type': 'application/json',
@@ -85,13 +85,7 @@ class UserService {
         };
       }
 
-      console.log('Request options:', {
-        ...options,
-        body: options.body ? JSON.parse(options.body as string) : undefined
-      });
-
       const response = await fetch(url, options);
-      console.log('Response status:', response.status);
 
       if (!response.ok) {
         try {
@@ -103,15 +97,13 @@ class UserService {
       }
 
       try {
-        const data = await response.json();
-        console.log('Response data:', data);
-        return data;
+        return await response.json();
       } catch (jsonError) {
-        console.error('Error parsing response:', jsonError);
+        logger.error('Ошибка при обработке ответа сервера', jsonError);
         throw new Error('Ошибка при обработке ответа сервера');
       }
     } catch (error) {
-      console.error('Request error:', error);
+      logger.error('Ошибка запроса:', error);
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         throw new Error('Ошибка сети. Пожалуйста, проверьте подключение к интернету и убедитесь, что сервер запущен.');
       }
@@ -132,7 +124,7 @@ class UserService {
 
       return response;
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Ошибка авторизации:', error);
       throw error;
     }
   }
@@ -235,17 +227,14 @@ class UserService {
 
   async updateUser(userId: number, data: UpdateUserData): Promise<User> {
     try {
-      console.log('Updating user:', { userId, data });
-      
       const response = await this.request(`/users/${userId}`, {
         method: 'PUT',
         body: JSON.stringify(data)
       });
 
-      console.log('Updated user:', response);
       return response;
     } catch (error) {
-      console.error('Update user error:', error);
+      logger.error('Ошибка при обновлении профиля', error);
       throw error instanceof Error 
         ? error 
         : new Error('Ошибка при обновлении профиля');
@@ -488,16 +477,14 @@ class UserService {
       }
 
       const message = await response.json();
-      console.log('Сообщение успешно отправлено:', message);
       
-      // Отправляем сообщение через SignalR
       if (chatService.isConnected()) {
         await chatService.sendMessage(message);
       }
 
       return message;
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Ошибка при отправке сообщения:', error);
       throw error;
     }
   }
@@ -522,4 +509,4 @@ class UserService {
 }
 
 export const userService = new UserService();
-export type { User, LoginData, RegisterData, UpdateUserData, FriendResponse, FriendList, Message, ChatPreview }; 
+export type { LoginData, RegisterData, UpdateUserData, FriendResponse, FriendList, Message, ChatPreview }; 

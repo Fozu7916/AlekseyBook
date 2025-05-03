@@ -1,19 +1,9 @@
-import { userService } from './userService';
+import { Message, User } from './userService';
+import { logger } from './loggerService';
 
-export interface Message {
-  id: number;
-  senderId: number;
-  receiverId: number;
-  content: string;
-  createdAt: string;
-  isRead: boolean;
-}
-
-export interface Chat {
-  userId: number;
-  username: string;
-  avatarUrl?: string;
-  lastMessage?: Message;
+interface Chat {
+  user: User;
+  lastMessage: Message | null;
   unreadCount: number;
 }
 
@@ -30,52 +20,85 @@ class MessageService {
       throw new Error('Не авторизован');
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          ...options.headers,
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!response.ok) {
-      let errorMessage = 'Произошла ошибка';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {}
-      throw new Error(errorMessage);
+      if (!response.ok) {
+        let errorMessage = 'Произошла ошибка';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (err) {
+          logger.error('Ошибка при разборе ответа с ошибкой', err);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      logger.error('Ошибка при запросе к API сообщений', { endpoint, error });
+      throw error;
     }
-
-    return response.json();
   }
 
   async getChats(): Promise<Chat[]> {
-    return this.request('/messages/chats');
+    try {
+      return await this.request('/messages/chats');
+    } catch (error) {
+      logger.error('Ошибка при получении списка чатов', error);
+      throw error;
+    }
   }
 
   async getMessages(userId: number): Promise<Message[]> {
-    return this.request(`/messages/${userId}`);
+    try {
+      return await this.request(`/messages/chat/${userId}`);
+    } catch (error) {
+      logger.error('Ошибка при получении сообщений', error);
+      throw error;
+    }
   }
 
   async sendMessage(userId: number, content: string): Promise<Message> {
-    return this.request(`/messages/${userId}`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    });
+    try {
+      return await this.request('/messages', {
+        method: 'POST',
+        body: JSON.stringify({ receiverId: userId, content }),
+      });
+    } catch (error) {
+      logger.error('Ошибка при отправке сообщения', error);
+      throw error;
+    }
   }
 
   async markAsRead(userId: number): Promise<void> {
-    await this.request(`/messages/${userId}/read`, {
-      method: 'POST',
-    });
+    try {
+      await this.request(`/messages/read/${userId}`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      logger.error('Ошибка при отметке сообщений как прочитанных', error);
+      throw error;
+    }
   }
 
   async deleteMessage(messageId: number): Promise<void> {
-    await this.request(`/messages/${messageId}`, {
-      method: 'DELETE',
-    });
+    try {
+      await this.request(`/messages/${messageId}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      logger.error('Ошибка при удалении сообщения', error);
+      throw error;
+    }
   }
 }
 

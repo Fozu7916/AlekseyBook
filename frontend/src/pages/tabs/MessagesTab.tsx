@@ -5,6 +5,7 @@ import './MessagesTab.css';
 import { TabProps } from './types';
 import { userService, User, Message, ChatPreview } from '../../services/userService';
 import { chatService } from '../../services/chatService';
+import { logger } from '../../services/loggerService';
 
 const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -32,7 +33,6 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('Пользователь не авторизован');
         return;
       }
 
@@ -60,7 +60,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         return hasChanges ? userChats : prev;
       });
     } catch (err) {
-      console.error('Ошибка при загрузке чатов:', err);
+      logger.error('Ошибка при загрузке чатов', err);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
       setHasMore(sortedMessages.length >= MESSAGES_PER_PAGE);
     } catch (err) {
-      console.error('Ошибка при загрузке сообщений:', err);
+      logger.error('Ошибка при загрузке сообщений', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке сообщений');
     } finally {
       setIsLoading(false);
@@ -132,7 +132,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
           return;
         }
 
-        console.log('Успешно подключились к чату');
+        logger.info('Успешно подключились к чату');
         
         if (chats.length === 0) {
           await loadChats(true);
@@ -143,7 +143,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         }
 
       } catch (err) {
-        console.error('Ошибка при инициализации чата:', err);
+        logger.error('Ошибка при инициализации чата', err);
         if (isComponentMounted) {
           setError('Ошибка подключения к чату. Пробуем переподключиться...');
           if (!retryTimeout) {
@@ -212,6 +212,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       const user = await userService.getUserById(userId);
       setSelectedChat(user);
     } catch (err) {
+      logger.error('Ошибка при загрузке пользователя', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке пользователя');
     }
   };
@@ -221,7 +222,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       await userService.markMessagesAsRead(userId);
       loadChats();
     } catch (err) {
-      console.error('Ошибка при отметке сообщений как прочитанных:', err);
+      logger.error('Ошибка при отметке сообщений как прочитанных', err);
     }
   };
 
@@ -242,7 +243,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
           clearTimeout(typingTimeoutRef.current);
         }
       } else {
-        console.log('Начинаем печатать для получателя:', selectedChat.id);
+        logger.info('Начинаем печатать для получателя:', selectedChat.id);
         setIsTyping(true);
         if (chatService.isConnected()) {
           await chatService.sendTypingStatus(selectedChat.id.toString(), true);
@@ -250,14 +251,14 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       }
 
       typingTimeoutRef.current = setTimeout(async () => {
-        console.log('Таймер истек, отключаем статус печатания');
+        logger.info('Таймер истек, отключаем статус печатания');
         setIsTyping(false);
         if (chatService.isConnected()) {
           await chatService.sendTypingStatus(selectedChat.id.toString(), false);
         }
       }, TYPING_TIMEOUT);
     } catch (err) {
-      console.error('Ошибка при отправке статуса печатания:', err);
+      logger.error('Ошибка при отправке статуса печатания', err);
     }
   }, [selectedChat, isTyping]);
 
@@ -291,15 +292,15 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
             sender: currentUser,
             receiver: selectedChat
           });
-          console.log('Сообщение успешно отправлено через SignalR');
+          logger.info('Сообщение успешно отправлено через SignalR');
         } catch (err) {
-          console.error('Ошибка отправки через SignalR:', err);
+          logger.error('Ошибка отправки через SignalR', err);
           loadMessages(selectedChat.id, true);
         }
       }
 
     } catch (err) {
-      console.error('Ошибка при отправке сообщения:', err);
+      logger.error('Ошибка при отправке сообщения', err);
       setError(err instanceof Error ? err.message : 'Ошибка при отправке сообщения');
       setNewMessage(messageContent);
     }
@@ -326,7 +327,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         loadChats(false);
       }
     } catch (err) {
-      console.error('Ошибка при загрузке чата:', err);
+      logger.error('Ошибка при загрузке чата', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке чата');
     }
   }, [selectedChat, loadMessages, navigate]);
@@ -349,7 +350,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       return;
     }
 
-    console.log('Устанавливаем обработчики SignalR');
+    logger.info('Устанавливаем обработчики SignalR');
     
     const unsubscribeMessage = chatService.onMessage((message) => {
     
@@ -421,7 +422,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       setIsTyping(false);
       if (selectedChat && chatService.isConnected()) {
         chatService.sendTypingStatus(selectedChat.id.toString(), false)
-          .catch(err => console.error('Ошибка при отключении статуса печатания:', err));
+          .catch(err => logger.error('Ошибка при отключении статуса печатания', err));
       }
     }
   };
@@ -430,7 +431,7 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     if (!selectedChat) return null;
     
     const isUserTyping = typingUsers[selectedChat.id.toString()];
-    console.log('Проверка статуса печатания:', { 
+    logger.info('Проверка статуса печатания:', { 
       userId: selectedChat.id, 
       isTyping: isUserTyping,
       typingUsers 

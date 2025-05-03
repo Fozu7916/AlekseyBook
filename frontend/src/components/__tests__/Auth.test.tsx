@@ -29,11 +29,11 @@ describe('Auth Component', () => {
     render(<Auth />);
     
     // Находим кнопку переключения на форму регистрации
-    const switchButton = screen.getByText(/нет аккаунта/i);
+    const switchButton = screen.getByRole('button', { name: /нет аккаунта\? зарегистрироваться/i });
     
     // Используем act для обёртки действия, которое вызывает изменение состояния
     await act(async () => {
-      fireEvent.click(switchButton.querySelector('button')!);
+      fireEvent.click(switchButton);
     });
 
     // Проверяем, что форма переключилась в режим регистрации
@@ -100,9 +100,9 @@ describe('Auth Component', () => {
     render(<Auth />);
     
     // Переключаемся на форму регистрации
-    const switchButton = screen.getByText(/нет аккаунта/i);
+    const switchButton = screen.getByRole('button', { name: /нет аккаунта\? зарегистрироваться/i });
     await act(async () => {
-      fireEvent.click(switchButton.querySelector('button')!);
+      fireEvent.click(switchButton);
     });
 
     // Заполняем форму регистрации
@@ -134,9 +134,9 @@ describe('Auth Component', () => {
     render(<Auth />);
     
     // Переключаемся на форму регистрации
-    const switchButton = screen.getByText(/нет аккаунта/i);
+    const switchButton = screen.getByRole('button', { name: /нет аккаунта\? зарегистрироваться/i });
     await act(async () => {
-      fireEvent.click(switchButton.querySelector('button')!);
+      fireEvent.click(switchButton);
     });
 
     // Заполняем форму регистрации
