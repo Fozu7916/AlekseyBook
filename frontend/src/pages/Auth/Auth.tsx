@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { userService } from '../../services/userService';
-import { logger } from '../../services/loggerService';
 import './Auth.css';
 
 const Auth: React.FC = () => {
@@ -31,9 +30,9 @@ const Auth: React.FC = () => {
         });
       }
       
+      // После успешного входа перезагружаем страницу
       window.location.href = '/';
     } catch (err) {
-      logger.error('Ошибка авторизации', err);
       setError(err instanceof Error ? err.message : 'Произошла ошибка');
     } finally {
       setIsLoading(false);
@@ -48,9 +47,12 @@ const Auth: React.FC = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-form">
+    <div className="auth-page">
+      <div className="auth-container">
         <h2>{isRegister ? 'Регистрация' : 'Вход'}</h2>
+        
+        {error && <div className="error-message">{error}</div>}
+        
         <form onSubmit={handleSubmit}>
           {isRegister && (
             <div className="form-group">
@@ -62,9 +64,11 @@ const Auth: React.FC = () => {
                 value={formData.username}
                 onChange={handleInputChange}
                 required
+                disabled={isLoading}
               />
             </div>
           )}
+          
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -74,8 +78,10 @@ const Auth: React.FC = () => {
               value={formData.email}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
             />
           </div>
+          
           <div className="form-group">
             <label htmlFor="password">Пароль</label>
             <input
@@ -85,19 +91,32 @@ const Auth: React.FC = () => {
               value={formData.password}
               onChange={handleInputChange}
               required
+              disabled={isLoading}
             />
           </div>
-          {error && <div className="error-message">{error}</div>}
-          <button type="submit" disabled={isLoading}>
+          
+          <button type="submit" className="submit-button" disabled={isLoading}>
             {isLoading ? 'Загрузка...' : (isRegister ? 'Зарегистрироваться' : 'Войти')}
           </button>
         </form>
-        <button 
-          className="switch-auth-mode" 
-          onClick={() => setIsRegister(!isRegister)}
-        >
-          {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-        </button>
+        
+        <div className="auth-switch">
+          {isRegister ? (
+            <p>
+              Уже есть аккаунт?{' '}
+              <button onClick={() => setIsRegister(false)} disabled={isLoading}>
+                Войти
+              </button>
+            </p>
+          ) : (
+            <p>
+              Нет аккаунта?{' '}
+              <button onClick={() => setIsRegister(true)} disabled={isLoading}>
+                Зарегистрироваться
+              </button>
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -29,7 +29,7 @@ describe('Auth Component', () => {
     render(<Auth />);
     
     // Находим кнопку переключения на форму регистрации
-    const switchButton = screen.getByRole('button', { name: /нет аккаунта\? зарегистрироваться/i });
+    const switchButton = screen.getByRole('button', { name: /зарегистрироваться/i });
     
     // Используем act для обёртки действия, которое вызывает изменение состояния
     await act(async () => {
@@ -100,7 +100,7 @@ describe('Auth Component', () => {
     render(<Auth />);
     
     // Переключаемся на форму регистрации
-    const switchButton = screen.getByRole('button', { name: /нет аккаунта\? зарегистрироваться/i });
+    const switchButton = screen.getByRole('button', { name: /зарегистрироваться/i });
     await act(async () => {
       fireEvent.click(switchButton);
     });
@@ -134,7 +134,7 @@ describe('Auth Component', () => {
     render(<Auth />);
     
     // Переключаемся на форму регистрации
-    const switchButton = screen.getByRole('button', { name: /нет аккаунта\? зарегистрироваться/i });
+    const switchButton = screen.getByRole('button', { name: /зарегистрироваться/i });
     await act(async () => {
       fireEvent.click(switchButton);
     });
