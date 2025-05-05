@@ -70,6 +70,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IWallPostService, WallPostService>();
+builder.Services.AddScoped<ILikeCommentService, LikeCommentService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

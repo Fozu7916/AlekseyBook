@@ -20,6 +20,9 @@ namespace backend.Data
         public DbSet<UserTrack> UserTracks { get; set; }
         public DbSet<Playlist> Playlists { get; set; }
         public DbSet<PlaylistTrack> PlaylistTracks { get; set; }
+        public DbSet<WallPost> WallPosts { get; set; }
+        public DbSet<Like> Likes { get; set; }
+        public DbSet<Comment> Comments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -142,6 +145,29 @@ namespace backend.Data
                 .WithMany(t => t.PlaylistTracks)
                 .HasForeignKey(pt => pt.TrackId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WallPost>(entity =>
+            {
+                entity.ToTable("wall_posts");
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.Content).HasColumnName("content");
+                entity.Property(e => e.ImageUrl).HasColumnName("image_url").IsRequired(false);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.AuthorId).HasColumnName("author_id");
+                entity.Property(e => e.WallOwnerId).HasColumnName("wall_owner_id");
+                entity.Property(e => e.IsDeleted).HasColumnName("is_deleted");
+
+                entity.HasOne(w => w.Author)
+                    .WithMany()
+                    .HasForeignKey(w => w.AuthorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(w => w.WallOwner)
+                    .WithMany()
+                    .HasForeignKey(w => w.WallOwnerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 } 
