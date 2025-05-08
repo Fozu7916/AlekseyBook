@@ -22,6 +22,7 @@ namespace backend.Models.DTOs
     {
         public string Content { get; set; }
         public int WallPostId { get; set; }
+        public int? ParentId { get; set; }
     }
 
     public class UpdateCommentDto

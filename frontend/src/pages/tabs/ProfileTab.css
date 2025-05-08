@@ -980,6 +980,16 @@
   line-height: 1.4;
 }
 
+.comment-text a {
+  color: #5865f2;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.comment-text a:hover {
+  text-decoration: underline;
+}
+
 .comment-date {
   font-size: 0.85em;
   color: var(--text-secondary);

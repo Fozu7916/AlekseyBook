@@ -124,7 +124,9 @@ class PostService {
       const response = await this.request(`/wall-posts/user/${userId}`);
       const posts = response.map((post: any) => ({
         ...post,
-        createdAt: new Date(post.createdAt)
+        createdAt: post.createdAt.endsWith('Z') 
+          ? new Date(post.createdAt)
+          : new Date(post.createdAt + 'Z')
       }));
 
       const postsWithLikes = await Promise.all(
@@ -168,9 +170,15 @@ class PostService {
         method: 'POST',
         body: JSON.stringify(postData)
       });
+      
+      // Добавляем 'Z' к строке даты, чтобы указать, что это UTC
+      const createdAt = response.createdAt.endsWith('Z') 
+        ? new Date(response.createdAt)
+        : new Date(response.createdAt + 'Z');
+
       return {
         ...response,
-        createdAt: new Date(response.createdAt),
+        createdAt,
         isLiked: false
       };
     } catch (error) {
@@ -187,7 +195,9 @@ class PostService {
       });
       return {
         ...response,
-        createdAt: new Date(response.createdAt)
+        createdAt: response.createdAt.endsWith('Z') 
+          ? new Date(response.createdAt)
+          : new Date(response.createdAt + 'Z')
       };
     } catch (error) {
       logger.error('Ошибка при обновлении поста', error);
@@ -249,7 +259,7 @@ class PostService {
 
   async addComment(postId: number, content: string): Promise<Comment> {
     try {
-      return await this.request(`/LikeComment/comments`, {
+      return await this.request(`/LikeComment/posts/${postId}/comments`, {
         method: 'POST',
         body: JSON.stringify({ content, wallPostId: postId })
       });
@@ -274,7 +284,7 @@ class PostService {
     try {
       return await this.request(`/LikeComment/posts/${postId}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ content, parentId: parentCommentId })
+        body: JSON.stringify({ content, wallPostId: postId, parentId: parentCommentId })
       });
     } catch (error) {
       logger.error('Ошибка при ответе на комментарий', error);

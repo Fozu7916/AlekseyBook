@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Collections.Generic;
 
 namespace backend.Models
 {
@@ -20,6 +21,13 @@ namespace backend.Models
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+        public int? ParentId { get; set; }
+        
+        [ForeignKey("ParentId")]
+        public Comment Parent { get; set; }
+        
+        public ICollection<Comment> Replies { get; set; }
 
         [ForeignKey("AuthorId")]
         public User Author { get; set; }

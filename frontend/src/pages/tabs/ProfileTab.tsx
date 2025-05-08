@@ -415,7 +415,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
       }));
       setActiveComments(postId);
 
-      // Обновляем количество комментариев в посте
       setPosts(prevPosts => prevPosts.map(post => 
         post.id === postId 
           ? { ...post, comments: comments.length }
@@ -431,16 +430,15 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
     try {
       const newComment = await postService.addComment(postId, commentText.trim());
-      const comments = await postService.getPostComments(postId);
       
       setPostComments(prev => ({
         ...prev,
-        [postId]: comments
+        [postId]: [...prev[postId], newComment]
       }));
       
       setPosts(prevPosts => prevPosts.map(post => 
         post.id === postId 
-          ? { ...post, comments: comments.length }
+          ? { ...post, comments: post.comments + 1 }
           : post
       ));
       
@@ -471,9 +469,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     }
   };
 
-  const handleReplyClick = (commentId: number) => {
+  const handleReplyClick = (commentId: number, authorUsername: string) => {
     setReplyingTo(replyingTo === commentId ? null : commentId);
-    setReplyText('');
+    setReplyText(replyingTo === commentId ? '' : `[${authorUsername}], `);
   };
 
   const handleReplySubmit = async (postId: number, parentCommentId: number) => {
@@ -486,6 +484,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         ...prev,
         [postId]: [...prev[postId], newComment]
       }));
+      
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === postId 
+          ? { ...post, comments: post.comments + 1 }
+          : post
+      ));
       
       setReplyingTo(null);
       setReplyText('');
@@ -573,6 +577,37 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
   const canDeleteComment = (comment: Comment) => {
     return comment.author.id === currentUser?.id || user?.id === currentUser?.id;
+  };
+
+  const formatCommentText = (text: string) => {
+    return text.replace(/\[([^\]]+)\]/g, (match, username) => {
+      return `<a href="#" onclick="event.preventDefault(); window.location.href='/profile/${username}'" class="mention">@${username}</a>`;
+    });
+  };
+
+  const formatDateTime = (utcDate: string | Date) => {
+    let date: Date;
+    
+    if (utcDate instanceof Date) {
+      // Если это локальная дата (при создании поста)
+      date = utcDate;
+    } else {
+      // Если это строка с UTC временем с сервера
+      // Проверяем, содержит ли строка 'Z' в конце
+      if (utcDate.endsWith('Z')) {
+        date = new Date(utcDate);
+      } else {
+        date = new Date(utcDate + 'Z');
+      }
+    }
+    
+    return date.toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   };
 
   if (!isActive) return null;
@@ -733,12 +768,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                     <div className="post-meta">
                       <div className="post-author">{post.authorName}</div>
                       <div className="post-date">
-                        {new Date(post.createdAt).toLocaleDateString('ru-RU', {
-                          day: 'numeric',
-                          month: 'long',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {formatDateTime(post.createdAt)}
                       </div>
                     </div>
                     <div className="post-menu">
@@ -794,7 +824,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                   {activeComments === post.id && (
                     <div className="post-comments">
                       <div className="comments-list">
-                        {postComments[post.id]?.map((comment: Comment) => (
+                        {postComments[post.id]
+                          ?.slice()
+                          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                          .map((comment: Comment) => (
                           <div key={comment.id} className="comment">
                             <div 
                               className="comment-avatar-container"
@@ -872,15 +905,13 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                                   </div>
                                 </div>
                               ) : (
-                                <div className="comment-text">{comment.content}</div>
+                                <div 
+                                  className="comment-text"
+                                  dangerouslySetInnerHTML={{ __html: formatCommentText(comment.content) }}
+                                />
                               )}
                               <div className="comment-date">
-                                {new Date(comment.createdAt).toLocaleDateString('ru-RU', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                                {formatDateTime(comment.createdAt)}
                               </div>
                               <div className="comment-actions">
                                 <button 
@@ -891,7 +922,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                                 </button>
                                 <button 
                                   className="comment-action reply"
-                                  onClick={() => handleReplyClick(comment.id)}
+                                  onClick={() => handleReplyClick(comment.id, comment.author.username)}
                                 >
                                   💬 Ответить
                                 </button>

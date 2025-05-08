@@ -80,9 +80,17 @@ namespace backend.Services
         public async Task<List<CommentDto>> GetPostCommentsAsync(int postId)
         {
             var comments = await _context.Comments
+                .AsNoTracking()
                 .Include(c => c.Author)
                 .Where(c => c.WallPostId == postId)
-                .OrderByDescending(c => c.CreatedAt)
+                .OrderBy(c => c.CreatedAt)
+                .ThenBy(c => c.Id)
+                .ToListAsync();
+
+            var userId = _context.Comments.FirstOrDefault()?.AuthorId;
+
+            var commentLikes = await _context.CommentLikes
+                .Where(cl => cl.UserId == userId && comments.Select(c => c.Id).Contains(cl.CommentId))
                 .ToListAsync();
 
             return comments.Select(c => new CommentDto
@@ -97,7 +105,10 @@ namespace backend.Services
                     AvatarUrl = c.Author.AvatarUrl
                 },
                 CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt
+                UpdatedAt = c.UpdatedAt,
+                ParentId = c.ParentId,
+                Likes = _context.CommentLikes.Count(cl => cl.CommentId == c.Id),
+                IsLiked = commentLikes.Any(cl => cl.CommentId == c.Id)
             }).ToList();
         }
 
@@ -107,11 +118,19 @@ namespace backend.Services
             if (post == null)
                 return null;
 
+            if (dto.ParentId.HasValue)
+            {
+                var parentComment = await _context.Comments.FindAsync(dto.ParentId.Value);
+                if (parentComment == null || parentComment.WallPostId != dto.WallPostId)
+                    return null;
+            }
+
             var comment = new Comment
             {
                 Content = dto.Content,
                 WallPostId = dto.WallPostId,
-                AuthorId = authorId
+                AuthorId = authorId,
+                ParentId = dto.ParentId
             };
 
             _context.Comments.Add(comment);

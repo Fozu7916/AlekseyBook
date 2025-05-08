@@ -52,8 +52,8 @@ namespace backend.Controllers
             return await _likeCommentService.GetPostCommentsAsync(postId);
         }
 
-        [HttpPost("comments")]
-        public async Task<CommentDto> CreateComment(CreateCommentDto dto)
+        [HttpPost("posts/{postId}/comments")]
+        public async Task<ActionResult<CommentDto>> CreateReplyComment(int postId, [FromBody] CreateCommentDto dto)
         {
             var userId = GetCurrentUserId();
             return await _likeCommentService.CreateCommentAsync(dto, userId);
