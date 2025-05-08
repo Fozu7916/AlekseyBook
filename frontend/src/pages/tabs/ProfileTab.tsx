@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
-import { postService, WallPost } from '../../services/postService';
+import { postService, WallPost, Comment } from '../../services/postService';
 import './ProfileTab.css';
 import { logger } from '../../services/loggerService';
 
@@ -92,6 +92,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [editingPost, setEditingPost] = useState<WallPost | null>(null);
   const [editPostContent, setEditPostContent] = useState('');
   const [activePostMenu, setActivePostMenu] = useState<number | null>(null);
+  const [activeComments, setActiveComments] = useState<number | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [postComments, setPostComments] = useState<{[key: number]: Comment[]}>({});
+
+  const [activeCommentMenu, setActiveCommentMenu] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -113,7 +121,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
         try {
           const userPosts = await postService.getUserPosts(userData.id);
-          setPosts(userPosts);
+          
+          // Загружаем количество комментариев для каждого поста
+          const postsWithComments = await Promise.all(userPosts.map(async (post) => {
+            const comments = await postService.getPostComments(post.id);
+            return {
+              ...post,
+              comments: comments.length
+            };
+          }));
+          
+          setPosts(postsWithComments);
         } catch (err) {
           logger.error('Ошибка при получении постов', err);
           setError('Не удалось загрузить посты');
@@ -197,18 +215,20 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!editingPost) return;
-
+  const handleSaveProfile = async () => {
     try {
-      const updatedPost = await postService.updatePost(editingPost.id, editPostContent);
-      setPosts(prevPosts => prevPosts.map(post => 
-        post.id === editingPost.id ? { ...updatedPost, isLiked: post.isLiked } : post
-      ));
-      setEditingPost(null);
-      setEditPostContent('');
+      if (!user) return;
+      
+      const updatedUser = await userService.updateUser(user.id, {
+        status: editForm.status,
+        bio: editForm.bio
+      });
+      
+      setUser(updatedUser);
+      setIsEditing(false);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при обновлении поста');
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении профиля');
     }
   };
 
@@ -349,8 +369,6 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   };
 
   const handleDeletePost = async (postId: number) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот пост?')) return;
-
     try {
       await postService.deletePost(postId);
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
@@ -366,6 +384,195 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
   const canDeletePost = (post: WallPost) => {
     return post.authorId === currentUser?.id || user?.id === currentUser?.id;
+  };
+
+  const handleSavePost = async () => {
+    if (!editingPost) return;
+
+    try {
+      const updatedPost = await postService.updatePost(editingPost.id, editPostContent);
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === editingPost.id ? { ...updatedPost, isLiked: post.isLiked } : post
+      ));
+      setEditingPost(null);
+      setEditPostContent('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении поста');
+    }
+  };
+
+  const handleCommentClick = async (postId: number) => {
+    if (activeComments === postId) {
+      setActiveComments(null);
+      return;
+    }
+
+    try {
+      const comments = await postService.getPostComments(postId);
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: comments
+      }));
+      setActiveComments(postId);
+
+      // Обновляем количество комментариев в посте
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === postId 
+          ? { ...post, comments: comments.length }
+          : post
+      ));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке комментариев');
+    }
+  };
+
+  const handleAddComment = async (postId: number) => {
+    if (!commentText.trim()) return;
+
+    try {
+      const newComment = await postService.addComment(postId, commentText.trim());
+      const comments = await postService.getPostComments(postId);
+      
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: comments
+      }));
+      
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === postId 
+          ? { ...post, comments: comments.length }
+          : post
+      ));
+      
+      setCommentText('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при добавлении комментария');
+    }
+  };
+
+  const handleCommentLike = async (commentId: number) => {
+    try {
+      await postService.toggleCommentLike(commentId);
+      
+      // Оптимистичное обновление
+      setPostComments(prev => {
+        const updatedComments: { [key: string]: Comment[] } = { ...prev };
+        Object.keys(updatedComments).forEach((postId: string) => {
+          updatedComments[postId] = updatedComments[postId].map((comment: Comment) => 
+            comment.id === commentId 
+              ? { ...comment, isLiked: !comment.isLiked, likes: comment.isLiked ? comment.likes - 1 : comment.likes + 1 }
+              : comment
+          );
+        });
+        return updatedComments;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при обработке лайка комментария');
+    }
+  };
+
+  const handleReplyClick = (commentId: number) => {
+    setReplyingTo(replyingTo === commentId ? null : commentId);
+    setReplyText('');
+  };
+
+  const handleReplySubmit = async (postId: number, parentCommentId: number) => {
+    if (!replyText.trim()) return;
+
+    try {
+      const newComment = await postService.replyToComment(postId, parentCommentId, replyText.trim());
+      
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: [...prev[postId], newComment]
+      }));
+      
+      setReplyingTo(null);
+      setReplyText('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при добавлении ответа');
+    }
+  };
+
+  const handleCommentMenuClick = (commentId: number) => {
+    setActiveCommentMenu(activeCommentMenu === commentId ? null : commentId);
+  };
+
+  const handleEditComment = (comment: Comment) => {
+    setEditingComment(comment);
+    setActiveCommentMenu(null);
+  };
+
+  const handleDeleteComment = async (postId: number, commentId: number) => {
+    try {
+      // Оптимистичное обновление UI
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: prev[postId].filter(comment => comment.id !== commentId)
+      }));
+      
+      // Обновляем количество комментариев в посте
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === postId 
+          ? { ...post, comments: post.comments - 1 }
+          : post
+      ));
+      
+      // Закрываем меню
+      setActiveCommentMenu(null);
+      
+      // Отправляем запрос на удаление
+      await postService.deleteComment(commentId);
+    } catch (err) {
+      // В случае ошибки возвращаем комментарий обратно
+      const error = err instanceof Error ? err.message : 'Ошибка при удалении комментария';
+      setError(error);
+      
+      // Получаем актуальные комментарии с сервера
+      try {
+        const comments = await postService.getPostComments(postId);
+        setPostComments(prev => ({
+          ...prev,
+          [postId]: comments
+        }));
+        
+        // Обновляем количество комментариев в посте
+        setPosts(prevPosts => prevPosts.map(post => 
+          post.id === postId 
+            ? { ...post, comments: comments.length }
+            : post
+        ));
+      } catch (refreshError) {
+        logger.error('Ошибка при обновлении комментариев', refreshError);
+      }
+    }
+  };
+
+  const handleSaveComment = async (postId: number) => {
+    if (!editingComment) return;
+
+    try {
+      const updatedComment = await postService.updateComment(editingComment.id, editingComment.content);
+      
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: prev[postId].map(comment => 
+          comment.id === editingComment.id ? updatedComment : comment
+        )
+      }));
+      
+      setEditingComment(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении комментария');
+    }
+  };
+
+  const canEditComment = (comment: Comment) => {
+    return comment.author.id === currentUser?.id;
+  };
+
+  const canDeleteComment = (comment: Comment) => {
+    return comment.author.id === currentUser?.id || user?.id === currentUser?.id;
   };
 
   if (!isActive) return null;
@@ -429,7 +636,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                 />
               </div>
               <div className="edit-buttons">
-                <button className="save-button" onClick={handleSaveEdit}>
+                <button className="save-button" onClick={handleSaveProfile}>
                   Сохранить
                 </button>
                 <button className="cancel-button" onClick={handleCancelEdit}>
@@ -576,11 +783,164 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                       <span className="action-icon">❤️</span>
                       {post.likes}
                     </button>
-                    <button className="post-action">
+                    <button 
+                      className={`post-action ${activeComments === post.id ? 'active' : ''}`}
+                      onClick={() => handleCommentClick(post.id)}
+                    >
                       <span className="action-icon">💬</span>
                       {post.comments}
                     </button>
                   </div>
+                  {activeComments === post.id && (
+                    <div className="post-comments">
+                      <div className="comments-list">
+                        {postComments[post.id]?.map((comment: Comment) => (
+                          <div key={comment.id} className="comment">
+                            <div 
+                              className="comment-avatar-container"
+                              onClick={() => navigate(`/profile/${comment.author.username}`)}
+                            >
+                              <img 
+                                src={comment.author.avatarUrl ? `http://localhost:5038${comment.author.avatarUrl}` : '/images/default-avatar.svg'} 
+                                alt={comment.author.username} 
+                                className="comment-avatar"
+                              />
+                            </div>
+                            <div className="comment-content">
+                              <div className="comment-menu">
+                                <button 
+                                  className="comment-menu-button"
+                                  onClick={() => handleCommentMenuClick(comment.id)}
+                                >
+                                  <div className="comment-menu-dots">
+                                    <div className="comment-menu-dot" />
+                                    <div className="comment-menu-dot" />
+                                    <div className="comment-menu-dot" />
+                                  </div>
+                                </button>
+                                {activeCommentMenu === comment.id && (
+                                  <div className="comment-menu-content">
+                                    {canEditComment(comment) && (
+                                      <div 
+                                        className="comment-menu-item"
+                                        onClick={() => handleEditComment(comment)}
+                                      >
+                                        ✏️ Редактировать
+                                      </div>
+                                    )}
+                                    {canDeleteComment(comment) && (
+                                      <div 
+                                        className="comment-menu-item delete"
+                                        onClick={() => handleDeleteComment(post.id, comment.id)}
+                                      >
+                                        🗑️ Удалить
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <div 
+                                className="comment-author"
+                                onClick={() => navigate(`/profile/${comment.author.username}`)}
+                              >
+                                {comment.author.username}
+                              </div>
+                              {editingComment?.id === comment.id ? (
+                                <div className="reply-form">
+                                  <textarea
+                                    value={editingComment.content}
+                                    onChange={(e) => setEditingComment({
+                                      ...editingComment,
+                                      content: e.target.value
+                                    })}
+                                    placeholder="Редактировать комментарий..."
+                                  />
+                                  <div className="reply-form-buttons">
+                                    <button 
+                                      className="cancel-button"
+                                      onClick={() => setEditingComment(null)}
+                                    >
+                                      Отмена
+                                    </button>
+                                    <button 
+                                      className="save-button"
+                                      onClick={() => handleSaveComment(post.id)}
+                                      disabled={!editingComment.content.trim()}
+                                    >
+                                      Сохранить
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="comment-text">{comment.content}</div>
+                              )}
+                              <div className="comment-date">
+                                {new Date(comment.createdAt).toLocaleDateString('ru-RU', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                              <div className="comment-actions">
+                                <button 
+                                  className={`comment-action ${comment.isLiked ? 'liked' : ''}`}
+                                  onClick={() => handleCommentLike(comment.id)}
+                                >
+                                  ❤️ {comment.likes || 0}
+                                </button>
+                                <button 
+                                  className="comment-action reply"
+                                  onClick={() => handleReplyClick(comment.id)}
+                                >
+                                  💬 Ответить
+                                </button>
+                              </div>
+                              {replyingTo === comment.id && (
+                                <div className="reply-form">
+                                  <textarea
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder="Написать ответ..."
+                                  />
+                                  <div className="reply-form-buttons">
+                                    <button 
+                                      className="cancel-button"
+                                      onClick={() => setReplyingTo(null)}
+                                    >
+                                      Отмена
+                                    </button>
+                                    <button 
+                                      className="save-button"
+                                      onClick={() => handleReplySubmit(post.id, comment.id)}
+                                      disabled={!replyText.trim()}
+                                    >
+                                      Ответить
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="add-comment">
+                        <textarea
+                          placeholder="Написать комментарий..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          maxLength={500}
+                        />
+                        <button 
+                          className="comment-submit-button"
+                          onClick={() => handleAddComment(post.id)}
+                          disabled={!commentText.trim()}
+                        >
+                          Отправить
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -690,7 +1050,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               </button>
               <button 
                 className="save-button"
-                onClick={handleSaveEdit}
+                onClick={handleSavePost}
                 disabled={!editPostContent.trim() || editPostContent === editingPost.content}
               >
                 Сохранить

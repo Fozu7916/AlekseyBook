@@ -33,6 +33,21 @@ interface CreateWallPostDto {
   wallOwnerId: number;
 }
 
+export interface Comment {
+  id: number;
+  content: string;
+  author: {
+    id: number;
+    username: string;
+    avatarUrl?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  likes: number;
+  isLiked: boolean;
+  parentId?: number;
+}
+
 class PostService {
   private baseUrl = 'http://localhost:5038/api';
   private token: string | null = null;
@@ -82,9 +97,16 @@ class PostService {
         }
       }
 
+      if (options.method === 'DELETE' || response.status === 204) {
+        return undefined;
+      }
+
       try {
         return await response.json();
       } catch (jsonError) {
+        if (response.status === 200 && response.headers.get('content-length') === '0') {
+          return undefined;
+        }
         logger.error('Ошибка при обработке ответа сервера', jsonError);
         throw new Error('Ошибка при обработке ответа сервера');
       }
@@ -105,7 +127,6 @@ class PostService {
         createdAt: new Date(post.createdAt)
       }));
 
-      // Получаем информацию о лайках для каждого поста
       const postsWithLikes = await Promise.all(
         posts.map(async (post: WallPost) => {
           try {
@@ -115,8 +136,8 @@ class PostService {
             
             return {
               ...post,
-              likes: likes.length, // Устанавливаем актуальное количество лайков
-              isLiked: likes.some(like => like.user?.id === currentUserId) // Исправляем проверку ID пользователя
+              likes: likes.length,
+              isLiked: likes.some(like => like.user?.id === currentUserId)
             };
           } catch (error) {
             logger.error(`Ошибка при получении лайков для поста ${post.id}`, error);
@@ -205,13 +226,81 @@ class PostService {
         method: 'POST'
       });
 
-      // Проверяем формат ответа
       if (response && 'message' in response) {
         return response as { message: string };
       }
       return response as LikeDto;
     } catch (error) {
       logger.error('Ошибка при переключении лайка', error);
+      throw error;
+    }
+  }
+
+  async getPostComments(postId: number): Promise<Comment[]> {
+    try {
+      return await this.request(`/LikeComment/posts/${postId}/comments`, {
+        method: 'GET'
+      });
+    } catch (error) {
+      logger.error('Ошибка при получении комментариев', error);
+      throw error;
+    }
+  }
+
+  async addComment(postId: number, content: string): Promise<Comment> {
+    try {
+      return await this.request(`/LikeComment/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, wallPostId: postId })
+      });
+    } catch (error) {
+      logger.error('Ошибка при добавлении комментария', error);
+      throw error;
+    }
+  }
+
+  async toggleCommentLike(commentId: number): Promise<void> {
+    try {
+      await this.request(`/LikeComment/comments/${commentId}/like`, {
+        method: 'POST'
+      });
+    } catch (error) {
+      logger.error('Ошибка при обработке лайка комментария', error);
+      throw error;
+    }
+  }
+
+  async replyToComment(postId: number, parentCommentId: number, content: string): Promise<Comment> {
+    try {
+      return await this.request(`/LikeComment/posts/${postId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, parentId: parentCommentId })
+      });
+    } catch (error) {
+      logger.error('Ошибка при ответе на комментарий', error);
+      throw error;
+    }
+  }
+
+  async updateComment(commentId: number, content: string): Promise<Comment> {
+    try {
+      return await this.request(`/LikeComment/comments/${commentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content })
+      });
+    } catch (error) {
+      logger.error('Ошибка при обновлении комментария', error);
+      throw error;
+    }
+  }
+
+  async deleteComment(commentId: number): Promise<void> {
+    try {
+      await this.request(`/LikeComment/comments/${commentId}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      logger.error('Ошибка при удалении комментария', error);
       throw error;
     }
   }
