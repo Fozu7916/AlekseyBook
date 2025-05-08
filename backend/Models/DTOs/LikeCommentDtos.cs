@@ -16,6 +16,9 @@ namespace backend.Models.DTOs
         public UserResponseDto Author { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
+        public int? ParentId { get; set; }
+        public int Likes { get; set; }
+        public bool IsLiked { get; set; }
     }
 
     public class CreateCommentDto

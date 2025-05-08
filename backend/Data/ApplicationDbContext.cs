@@ -23,6 +23,7 @@ namespace backend.Data
         public DbSet<WallPost> WallPosts { get; set; }
         public DbSet<Like> Likes { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<CommentLike> CommentLikes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -167,6 +168,28 @@ namespace backend.Data
                     .WithMany()
                     .HasForeignKey(w => w.WallOwnerId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CommentLike>(entity =>
+            {
+                entity.ToTable("comment_likes");
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.CommentId).HasColumnName("comment_id");
+                entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+                entity.HasOne(cl => cl.Comment)
+                    .WithMany()
+                    .HasForeignKey(cl => cl.CommentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(cl => cl.User)
+                    .WithMany()
+                    .HasForeignKey(cl => cl.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(cl => new { cl.CommentId, cl.UserId }).IsUnique();
             });
         }
     }
