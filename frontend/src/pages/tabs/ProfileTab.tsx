@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
+import { postService, WallPost } from '../../services/postService';
 import './ProfileTab.css';
 import { logger } from '../../services/loggerService';
 
@@ -30,17 +31,6 @@ interface MusicTrack {
   title: string;
   artist: string;
   coverUrl?: string;
-}
-
-interface WallPost {
-  id: number;
-  authorId: number;
-  authorName: string;
-  authorAvatar?: string;
-  content: string;
-  createdAt: Date;
-  likes: number;
-  comments: number;
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
@@ -91,28 +81,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [musicTracks] = useState<MusicTrack[]>([
   ]);
 
-  const [posts, setPosts] = useState<WallPost[]>([
-    {
-      id: 1,
-      authorId: 1,
-      authorName: "Иван Иванов",
-      authorAvatar: "/default-avatar.png",
-      content: "Привет всем! Это мой первый пост на стене 👋",
-      createdAt: new Date(),
-      likes: 5,
-      comments: 2
-    },
-    {
-      id: 2,
-      authorId: 2,
-      authorName: "Мария Петрова",
-      authorAvatar: "/default-avatar.png",
-      content: "Отличный профиль! Давно не виделись 😊",
-      createdAt: new Date(Date.now() - 86400000), 
-      likes: 3,
-      comments: 1
-    }
-  ]);
+  const [posts, setPosts] = useState<WallPost[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [newPostContent, setNewPostContent] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +106,16 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         
         const isOwner = currentUserData?.username === username;
         setIsOwner(isOwner);
+
+        try {
+          const userPosts = await postService.getUserPosts(userData.id);
+          setPosts(userPosts);
+        } catch (err) {
+          logger.error('Ошибка при получении постов', err);
+          setError('Не удалось загрузить посты');
+        } finally {
+          setIsLoadingPosts(false);
+        }
 
         try {
           if (isOwner) {
@@ -253,23 +233,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     }));
   };
 
-  const handlePostSubmit = (e: React.FormEvent) => {
+  const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostContent.trim()) return;
+    if (!newPostContent.trim() || !currentUser || !user) return;
 
-    const newPost: WallPost = {
-      id: posts.length + 1,
-      authorId: 1, // текущий пользователь
-      authorName: "Вы",
-      authorAvatar: user?.avatarUrl,
-      content: newPostContent.trim(),
-      createdAt: new Date(),
-      likes: 0,
-      comments: 0
-    };
-
-    setPosts([newPost, ...posts]);
-    setNewPostContent("");
+    try {
+      const newPost = await postService.createPost(newPostContent.trim(), user.id);
+      setPosts(prevPosts => [newPost, ...prevPosts]);
+      setNewPostContent('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при создании поста');
+    }
   };
 
   const handleAddFriend = async () => {
@@ -467,39 +441,45 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           </form>
 
           <div className="posts-list">
-            {posts.map(post => (
-              <div key={post.id} className="post-card">
-                <div className="post-header">
-                  <img 
-                    src={post.authorAvatar || '/images/default-avatar.svg'} 
-                    alt={post.authorName} 
-                    className="post-avatar"
-                  />
-                  <div className="post-meta">
-                    <div className="post-author">{post.authorName}</div>
-                    <div className="post-date">
-                      {new Date(post.createdAt).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+            {isLoadingPosts ? (
+              <div className="loading-posts">Загрузка постов...</div>
+            ) : posts.length > 0 ? (
+              posts.map(post => (
+                <div key={post.id} className="post-card">
+                  <div className="post-header">
+                    <img 
+                      src={post.authorAvatar || '/images/default-avatar.svg'} 
+                      alt={post.authorName} 
+                      className="post-avatar"
+                    />
+                    <div className="post-meta">
+                      <div className="post-author">{post.authorName}</div>
+                      <div className="post-date">
+                        {new Date(post.createdAt).toLocaleDateString('ru-RU', {
+                          day: 'numeric',
+                          month: 'long',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
                     </div>
                   </div>
+                  <div className="post-content">{post.content}</div>
+                  <div className="post-footer">
+                    <button className="post-action">
+                      <span className="action-icon">❤️</span>
+                      {post.likes}
+                    </button>
+                    <button className="post-action">
+                      <span className="action-icon">💬</span>
+                      {post.comments}
+                    </button>
+                  </div>
                 </div>
-                <div className="post-content">{post.content}</div>
-                <div className="post-footer">
-                  <button className="post-action">
-                    <span className="action-icon">❤️</span>
-                    {post.likes}
-                  </button>
-                  <button className="post-action">
-                    <span className="action-icon">💬</span>
-                    {post.comments}
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="no-posts">Нет постов</div>
+            )}
           </div>
         </div>
       </div>
