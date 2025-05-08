@@ -89,6 +89,10 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
+  const [editingPost, setEditingPost] = useState<WallPost | null>(null);
+  const [editPostContent, setEditPostContent] = useState('');
+  const [activePostMenu, setActivePostMenu] = useState<number | null>(null);
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -194,34 +198,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   };
 
   const handleSaveEdit = async () => {
+    if (!editingPost) return;
+
     try {
-      if (!user) return;
-
-      if (!editForm.status.trim()) {
-        setError('Статус обязателен для заполнения');
-        return;
-      }
-
-      if (editForm.status.length > 50) {
-        setError('Статус не может быть длиннее 50 символов');
-        return;
-      }
-
-      if (editForm.bio && editForm.bio.length > 1000) {
-        setError('Биография не может быть длиннее 1000 символов');
-        return;
-      }
-
-      setError(null);
-      const updatedUser = await userService.updateUser(user.id, {
-        status: editForm.status.trim(),
-        bio: editForm.bio?.trim()
-      });
-      
-      setUser(updatedUser);
-      setIsEditing(false);
+      const updatedPost = await postService.updatePost(editingPost.id, editPostContent);
+      setPosts(prevPosts => prevPosts.map(post => 
+        post.id === editingPost.id ? { ...updatedPost, isLiked: post.isLiked } : post
+      ));
+      setEditingPost(null);
+      setEditPostContent('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ошибка при обновлении профиля');
+      setError(err instanceof Error ? err.message : 'Ошибка при обновлении поста');
     }
   };
 
@@ -295,6 +282,90 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     if (user) {
       navigate(`/messages/${user.id}`);
     }
+  };
+
+  const handleLikeClick = async (postId: number) => {
+    try {
+      setPosts(prevPosts => prevPosts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            isLiked: !post.isLiked,
+            likes: post.isLiked ? post.likes - 1 : post.likes + 1
+          };
+        }
+        return post;
+      }));
+
+      await postService.toggleLike(postId);
+      
+      const updatedLikes = await postService.getPostLikes(postId);
+      
+      setPosts(prevPosts => prevPosts.map(post => {
+        if (post.id === postId) {
+          const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const isLikedByCurrentUser = updatedLikes.some(like => like.user.id === currentUser?.id);
+          
+          return {
+            ...post,
+            likes: updatedLikes.length,
+            isLiked: isLikedByCurrentUser
+          };
+        }
+        return post;
+      }));
+    } catch (err) {
+      // В случае ошибки возвращаем предыдущее состояние
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка при обработке лайка';
+      setError(errorMessage);
+      
+      // Откатываем оптимистичное обновление
+      setPosts(prevPosts => prevPosts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            isLiked: !post.isLiked,
+            likes: post.isLiked ? post.likes + 1 : post.likes - 1
+          };
+        }
+        return post;
+      }));
+
+      if (errorMessage.includes('авторизац')) {
+        // Тут можно добавить редирект на страницу логина
+        console.log('Необходима авторизация');
+      }
+    }
+  };
+
+  const handlePostMenuClick = (postId: number) => {
+    setActivePostMenu(activePostMenu === postId ? null : postId);
+  };
+
+  const handleEditPost = (post: WallPost) => {
+    setEditingPost(post);
+    setEditPostContent(post.content);
+    setActivePostMenu(null);
+  };
+
+  const handleDeletePost = async (postId: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот пост?')) return;
+
+    try {
+      await postService.deletePost(postId);
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+      setActivePostMenu(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при удалении поста');
+    }
+  };
+
+  const canEditPost = (post: WallPost) => {
+    return post.authorId === currentUser?.id;
+  };
+
+  const canDeletePost = (post: WallPost) => {
+    return post.authorId === currentUser?.id || user?.id === currentUser?.id;
   };
 
   if (!isActive) return null;
@@ -448,7 +519,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                 <div key={post.id} className="post-card">
                   <div className="post-header">
                     <img 
-                      src={post.authorAvatar || '/images/default-avatar.svg'} 
+                      src={post.authorAvatarUrl ? `http://localhost:5038${post.authorAvatarUrl}` : '/images/default-avatar.svg'} 
                       alt={post.authorName} 
                       className="post-avatar"
                     />
@@ -463,10 +534,45 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                         })}
                       </div>
                     </div>
+                    <div className="post-menu">
+                      <button 
+                        className="post-menu-button"
+                        onClick={() => handlePostMenuClick(post.id)}
+                      >
+                        <div className="post-menu-dots">
+                          <div className="post-menu-dot" />
+                          <div className="post-menu-dot" />
+                          <div className="post-menu-dot" />
+                        </div>
+                      </button>
+                      {activePostMenu === post.id && (
+                        <div className="post-menu-content">
+                          {canEditPost(post) && (
+                            <div 
+                              className="post-menu-item"
+                              onClick={() => handleEditPost(post)}
+                            >
+                              ✏️ Редактировать
+                            </div>
+                          )}
+                          {canDeletePost(post) && (
+                            <div 
+                              className="post-menu-item delete"
+                              onClick={() => handleDeletePost(post.id)}
+                            >
+                              🗑️ Удалить
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="post-content">{post.content}</div>
                   <div className="post-footer">
-                    <button className="post-action">
+                    <button 
+                      className={`post-action ${post.isLiked ? 'liked' : ''}`} 
+                      onClick={() => handleLikeClick(post.id)}
+                    >
                       <span className="action-icon">❤️</span>
                       {post.likes}
                     </button>
@@ -567,6 +673,32 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           </div>
         </div>
       </div>
+
+      {editingPost && (
+        <>
+          <div className="modal-overlay" onClick={() => setEditingPost(null)} />
+          <div className="edit-post-modal" onClick={e => e.stopPropagation()}>
+            <h3>Редактирование поста</h3>
+            <textarea
+              value={editPostContent}
+              onChange={e => setEditPostContent(e.target.value)}
+              placeholder="Введите новый текст поста"
+            />
+            <div className="edit-post-modal-buttons">
+              <button className="cancel-button" onClick={() => setEditingPost(null)}>
+                Отмена
+              </button>
+              <button 
+                className="save-button"
+                onClick={handleSaveEdit}
+                disabled={!editPostContent.trim() || editPostContent === editingPost.content}
+              >
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

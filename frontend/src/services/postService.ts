@@ -4,11 +4,27 @@ export interface WallPost {
   id: number;
   authorId: number;
   authorName: string;
-  authorAvatar?: string;
+  authorAvatarUrl?: string;
   content: string;
   createdAt: Date;
   likes: number;
   comments: number;
+  isLiked?: boolean;
+}
+
+export interface LikeDto {
+  id: number;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  createdAt: string;
+}
+
+export interface UpdatePostDto {
+  content: string;
 }
 
 interface CreateWallPostDto {
@@ -22,10 +38,24 @@ class PostService {
   private token: string | null = null;
 
   constructor() {
-    this.token = localStorage.getItem('token');
+    this.updateToken();
+  }
+
+  private updateToken() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      logger.error('Токен авторизации не найден');
+    }
+    this.token = token;
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
+    this.updateToken();
+
+    if (!endpoint) {
+      throw new Error('Endpoint не может быть пустым');
+    }
+
     try {
       const url = `${this.baseUrl}${endpoint}`;
       
@@ -70,10 +100,36 @@ class PostService {
   async getUserPosts(userId: number): Promise<WallPost[]> {
     try {
       const response = await this.request(`/wall-posts/user/${userId}`);
-      return response.map((post: any) => ({
+      const posts = response.map((post: any) => ({
         ...post,
         createdAt: new Date(post.createdAt)
       }));
+
+      // Получаем информацию о лайках для каждого поста
+      const postsWithLikes = await Promise.all(
+        posts.map(async (post: WallPost) => {
+          try {
+            const likes = await this.getPostLikes(post.id);
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            const currentUserId = currentUser?.id;
+            
+            return {
+              ...post,
+              likes: likes.length, // Устанавливаем актуальное количество лайков
+              isLiked: likes.some(like => like.user?.id === currentUserId) // Исправляем проверку ID пользователя
+            };
+          } catch (error) {
+            logger.error(`Ошибка при получении лайков для поста ${post.id}`, error);
+            return {
+              ...post,
+              likes: 0,
+              isLiked: false
+            };
+          }
+        })
+      );
+
+      return postsWithLikes;
     } catch (error) {
       logger.error('Ошибка при получении постов пользователя', error);
       throw error;
@@ -82,7 +138,7 @@ class PostService {
 
   async createPost(content: string, wallOwnerId: number): Promise<WallPost> {
     try {
-      const postData: CreateWallPostDto = {
+      const postData = {
         content,
         wallOwnerId
       };
@@ -93,10 +149,27 @@ class PostService {
       });
       return {
         ...response,
-        createdAt: new Date(response.createdAt)
+        createdAt: new Date(response.createdAt),
+        isLiked: false
       };
     } catch (error) {
       logger.error('Ошибка при создании поста', error);
+      throw error;
+    }
+  }
+
+  async updatePost(postId: number, content: string): Promise<WallPost> {
+    try {
+      const response = await this.request(`/wall-posts/${postId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content })
+      });
+      return {
+        ...response,
+        createdAt: new Date(response.createdAt)
+      };
+    } catch (error) {
+      logger.error('Ошибка при обновлении поста', error);
       throw error;
     }
   }
@@ -108,6 +181,37 @@ class PostService {
       });
     } catch (error) {
       logger.error('Ошибка при удалении поста', error);
+      throw error;
+    }
+  }
+
+  async getPostLikes(postId: number): Promise<LikeDto[]> {
+    try {
+      return await this.request(`/LikeComment/posts/${postId}/likes`);
+    } catch (error) {
+      logger.error('Ошибка при получении лайков поста', error);
+      throw error;
+    }
+  }
+
+  async toggleLike(postId: number): Promise<LikeDto | { message: string }> {
+    if (!this.token) {
+      logger.error('Попытка поставить лайк без авторизации');
+      throw new Error('Необходима авторизация');
+    }
+
+    try {
+      const response = await this.request(`/LikeComment/posts/${postId}/likes`, {
+        method: 'POST'
+      });
+
+      // Проверяем формат ответа
+      if (response && 'message' in response) {
+        return response as { message: string };
+      }
+      return response as LikeDto;
+    } catch (error) {
+      logger.error('Ошибка при переключении лайка', error);
       throw error;
     }
   }

@@ -33,10 +33,17 @@ namespace backend.Controllers
         }
 
         [HttpPost("posts/{postId}/likes")]
-        public async Task<LikeDto> ToggleLike(int postId)
+        public async Task<ActionResult<LikeDto>> ToggleLike(int postId)
         {
             var userId = GetCurrentUserId();
-            return await _likeCommentService.ToggleLikeAsync(postId, userId);
+            var result = await _likeCommentService.ToggleLikeAsync(postId, userId);
+            
+            if (result == null)
+            {
+                return Ok(new { message = "Лайк удален" });
+            }
+            
+            return Ok(result);
         }
 
         [HttpGet("posts/{postId}/comments")]
