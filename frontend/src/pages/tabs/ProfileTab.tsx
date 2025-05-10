@@ -4,6 +4,7 @@ import './Tabs.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
 import { postService, WallPost, Comment } from '../../services/postService';
+import { onlineStatusService } from '../../services/onlineStatusService';
 import './ProfileTab.css';
 import { logger } from '../../services/loggerService';
 
@@ -102,6 +103,37 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let isConnectionEstablished = false;
+
+    const connectToOnlineStatus = async () => {
+      try {
+        await onlineStatusService.connect();
+        isConnectionEstablished = true;
+        unsubscribe = onlineStatusService.onStatusChanged((userId, isOnline, lastLogin) => {
+          logger.error('Получено обновление статуса в ProfileTab:', { userId, isOnline, lastLogin });
+          setUser(prevUser => {
+            if (prevUser && prevUser.id === userId) {
+              logger.error('Обновление статуса пользователя:', { 
+                prevIsOnline: prevUser.isOnline, 
+                newIsOnline: isOnline,
+                prevLastLogin: prevUser.lastLogin,
+                newLastLogin: lastLogin
+              });
+              return {
+                ...prevUser,
+                isOnline,
+                lastLogin
+              };
+            }
+            return prevUser;
+          });
+        });
+      } catch (err) {
+        logger.error('Ошибка при подключении к сервису онлайн-статуса:', err);
+      }
+    };
+
     const fetchUserProfile = async () => {
       try {
         if (!username) return;
@@ -119,10 +151,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         const isOwner = currentUserData?.username === username;
         setIsOwner(isOwner);
 
+        // Если соединение уже установлено, обновляем статус
+        if (isConnectionEstablished) {
+          await onlineStatusService.updateFocusState(document.hasFocus());
+        }
+
         try {
           const userPosts = await postService.getUserPosts(userData.id);
           
-          // Загружаем количество комментариев для каждого поста
           const postsWithComments = await Promise.all(userPosts.map(async (post) => {
             const comments = await postService.getPostComments(post.id);
             return {
@@ -165,8 +201,74 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
       }
     };
 
-    fetchUserProfile();
+    // Сначала устанавливаем соединение, затем загружаем профиль
+    connectToOnlineStatus().then(() => {
+      fetchUserProfile();
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+      onlineStatusService.disconnect();
+    };
   }, [username]);
+
+  const formatLastSeen = (user: User) => {
+    if (!user.lastLogin) {
+      return 'Не был в сети';
+    }
+    
+    if (user.isOnline) {
+      return 'онлайн';
+    }
+
+    const lastLogin = new Date(user.lastLogin + 'Z'); // Добавляем 'Z' для явного указания UTC
+    const now = new Date();
+    const diff = now.getTime() - lastLogin.getTime();
+    
+    // Меньше минуты
+    if (diff < 60000) {
+      return 'был только что';
+    }
+    
+    // Меньше часа
+    if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000);
+      return `был ${minutes} ${minutes === 1 ? 'минуту' : minutes < 5 ? 'минуты' : 'минут'} назад`;
+    }
+    
+    // Сегодня
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (lastLogin >= today) {
+      return `был сегодня в ${lastLogin.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      })}`;
+    }
+    
+    // Вчера
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (lastLogin >= yesterday) {
+      return `был вчера в ${lastLogin.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+      })}`;
+    }
+    
+    // Более старая дата
+    return `был ${lastLogin.toLocaleDateString('ru-RU', { 
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })}`;
+  };
 
   const handleAvatarClick = () => {
     if (isOwner) {
@@ -351,10 +453,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         return post;
       }));
 
-      if (errorMessage.includes('авторизац')) {
-        // Тут можно добавить редирект на страницу логина
-        console.log('Необходима авторизация');
-      }
+
     }
   };
 
@@ -636,6 +735,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
             alt={user.username} 
           />
+          {user.isOnline && <div className="online-status-indicator" />}
           {isUploading && <div className="avatar-uploading">Загрузка...</div>}
           {isOwner && <div className="avatar-edit-hint">Нажмите для изменения</div>}
         </div>
@@ -683,12 +783,9 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
             <>
               <div className="profile-status">{user.status}</div>
               <div className="profile-bio">{user.bio}</div>
-              {user.lastLogin && (
-                <div className="profile-last-seen">
-                  <span>Последний вход:</span>
-                  <span>{new Date(user.lastLogin).toLocaleDateString()}</span>
-                </div>
-              )}
+              <div className={`profile-last-seen ${user.isOnline ? 'online' : ''}`}>
+                {formatLastSeen(user)}
+              </div>
               {isOwner ? (
                 <button className="edit-profile-button" onClick={handleEditClick}>
                   Редактировать профиль

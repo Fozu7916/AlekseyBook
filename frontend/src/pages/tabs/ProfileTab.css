@@ -35,8 +35,20 @@
   width: 12rem;
   height: 12rem;
   border-radius: 50%;
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
+}
+
+.online-status-indicator {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #43b581;
+  border: 4px solid #2c2f33;
+  z-index: 2;
 }
 
 .profile-avatar img {
@@ -827,10 +839,16 @@
 
 .profile-last-seen {
   display: flex;
+  align-items: center;
   gap: 8px;
   color: #72767d;
   font-size: 14px;
   margin-top: 8px;
+}
+
+.profile-last-seen.online {
+  color: #43b581;
+  font-weight: 500;
 }
 
 .profile-actions {

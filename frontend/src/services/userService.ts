@@ -5,11 +5,12 @@ export interface User {
   username: string;
   email: string;
   avatarUrl?: string;
-  status: string;
+  status?: string;
   bio?: string;
+  createdAt: Date;
+  lastLogin?: Date;
   isVerified: boolean;
-  createdAt: string;
-  lastLogin?: string;
+  isOnline: boolean;
 }
 
 interface LoginData {

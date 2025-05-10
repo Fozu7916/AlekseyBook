@@ -52,7 +52,8 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+            if (!string.IsNullOrEmpty(accessToken) && 
+                (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/onlineStatusHub")))
             {
                 context.Token = accessToken;
             }
@@ -131,6 +132,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
+app.MapHub<OnlineStatusHub>("/onlineStatusHub");
 
 app.Run();
 
