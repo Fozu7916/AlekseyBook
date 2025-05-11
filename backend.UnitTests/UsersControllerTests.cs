@@ -67,8 +67,8 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
             Assert.Equal(userResponse, actionResult.Value);
-            Assert.Equal(userResponse.Username, actionResult.Value.Username);
-            Assert.Equal(userResponse.Email, actionResult.Value.Email);
+            Assert.Equal(userResponse.Username, actionResult.Value?.Username);
+            Assert.Equal(userResponse.Email, actionResult.Value?.Email);
         }
 
         [Fact]
@@ -99,8 +99,8 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
             Assert.Equal(userResponse, actionResult.Value);
-            Assert.Equal(updateDto.Status, actionResult.Value.Status);
-            Assert.Equal(updateDto.Bio, actionResult.Value.Bio);
+            Assert.Equal(updateDto.Status, actionResult.Value?.Status);
+            Assert.Equal(updateDto.Bio, actionResult.Value?.Bio);
         }
 
         [Fact]
@@ -122,8 +122,8 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<List<UserResponseDto>>>(result);
             Assert.Equal(users, actionResult.Value);
-            Assert.Equal(2, actionResult.Value.Count);
-            Assert.All(actionResult.Value, user => Assert.Contains("testuser", user.Username));
+            Assert.Equal(2, actionResult.Value?.Count);
+            Assert.All(actionResult.Value!, user => Assert.Contains("testuser", user.Username));
         }
 
         [Fact]
@@ -161,8 +161,8 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
             Assert.Equal(userResponse, actionResult.Value);
-            Assert.Equal(userResponse.Username, actionResult.Value.Username);
-            Assert.Equal(userResponse.Email, actionResult.Value.Email);
+            Assert.Equal(userResponse.Username, actionResult.Value?.Username);
+            Assert.Equal(userResponse.Email, actionResult.Value?.Email);
         }
 
         [Fact]
@@ -210,11 +210,14 @@ namespace backend.UnitTests
 
             // Assert
             var actionResult = Assert.IsType<ActionResult<AuthResponseDto>>(result);
+            Assert.NotNull(actionResult.Result);
             var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
+            Assert.NotNull(okResult.Value);
             var returnValue = Assert.IsType<AuthResponseDto>(okResult.Value);
+            Assert.NotNull(returnValue.User);
+            Assert.NotNull(returnValue.Token);
             Assert.Equal(registerDto.Username, returnValue.User.Username);
             Assert.Equal(registerDto.Email, returnValue.User.Email);
-            Assert.NotNull(returnValue.Token);
         }
 
         [Fact]
@@ -298,8 +301,10 @@ namespace backend.UnitTests
 
             // Assert
             var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            var okResult = Assert.IsType<UserResponseDto>(actionResult.Value);
-            Assert.Equal(userResponse.AvatarUrl, okResult.AvatarUrl);
+            Assert.NotNull(actionResult.Value);
+            var returnValue = actionResult.Value;
+            Assert.NotNull(returnValue.AvatarUrl);
+            Assert.Equal(userResponse.AvatarUrl, returnValue.AvatarUrl);
         }
 
         [Fact]
@@ -360,13 +365,22 @@ namespace backend.UnitTests
 
         public AnonymousObject(object value)
         {
-            _value = value;
+            _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
         public T GetPropertyValue<T>(string propertyName)
         {
-            var property = _value.GetType().GetProperty(propertyName);
-            return (T)property.GetValue(_value);
+            if (_value == null)
+                throw new ArgumentNullException(nameof(_value));
+
+            var property = _value.GetType().GetProperty(propertyName) 
+                ?? throw new ArgumentException($"Property {propertyName} not found", nameof(propertyName));
+                
+            var value = property.GetValue(_value);
+            if (value == null)
+                throw new InvalidOperationException($"Property {propertyName} value is null");
+
+            return (T)value;
         }
     }
 } 
