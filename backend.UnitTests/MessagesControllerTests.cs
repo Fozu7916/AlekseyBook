@@ -129,11 +129,11 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<MessageDto>>(result);
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value
+            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
                 .GetType()
-                .GetProperty("message")
-                .GetValue(badRequestResult.Value)
-                .ToString();
+                .GetProperty("message")?
+                .GetValue(badRequestResult.Value)?
+                .ToString() ?? string.Empty;
             Assert.Equal("Ошибка при отправке сообщения", errorMessage);
         }
 
@@ -277,9 +277,15 @@ namespace backend.UnitTests
             var returnValue = Assert.IsType<List<ChatPreviewDto>>(okResult.Value);
             Assert.Equal(2, returnValue.Count);
             Assert.NotNull(returnValue[0].User);
+            Assert.NotNull(returnValue[0].User.Username);
+            Assert.NotNull(returnValue[0].User.Email);
+            Assert.NotNull(returnValue[0].User.Status);
+            Assert.Equal("user2", returnValue[0].User.Username);
             Assert.NotNull(returnValue[1].User);
-            Assert.Equal("user2", returnValue[0].User!.Username);
-            Assert.Equal("user3", returnValue[1].User!.Username);
+            Assert.NotNull(returnValue[1].User.Username);
+            Assert.NotNull(returnValue[1].User.Email);
+            Assert.NotNull(returnValue[1].User.Status);
+            Assert.Equal("user3", returnValue[1].User.Username);
         }
 
         [Fact]
@@ -295,11 +301,11 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<List<ChatPreviewDto>>>(result);
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value
+            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
                 .GetType()
-                .GetProperty("message")
-                .GetValue(badRequestResult.Value)
-                .ToString();
+                .GetProperty("message")?
+                .GetValue(badRequestResult.Value)?
+                .ToString() ?? string.Empty;
             Assert.Equal("Ошибка при получении чатов", errorMessage);
         }
 
@@ -316,7 +322,8 @@ namespace backend.UnitTests
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var successObj = okResult.Value;
-            Assert.Equal(true, successObj.GetType().GetProperty("success").GetValue(successObj));
+            Assert.NotNull(successObj);
+            Assert.Equal(true, successObj?.GetType().GetProperty("success")?.GetValue(successObj));
         }
 
         [Fact]

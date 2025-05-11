@@ -227,6 +227,7 @@ namespace backend.UnitTests
             Assert.Equal(updateDto.Bio, result.Bio);
 
             var userInDb = await _context.Users.FindAsync(user.Id);
+            Assert.NotNull(userInDb);
             Assert.Equal(updateDto.Status, userInDb.Status);
             Assert.Equal(updateDto.Bio, userInDb.Bio);
         }

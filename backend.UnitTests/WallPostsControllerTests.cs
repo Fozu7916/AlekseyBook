@@ -93,11 +93,11 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<WallPostDto>>(result);
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value
+            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
                 .GetType()
-                .GetProperty("message")
-                .GetValue(badRequestResult.Value)
-                .ToString();
+                .GetProperty("message")?
+                .GetValue(badRequestResult.Value)?
+                .ToString() ?? string.Empty;
             Assert.Equal("Ошибка при создании поста", errorMessage);
         }
 
@@ -190,7 +190,7 @@ namespace backend.UnitTests
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
             var successObj = okResult.Value;
-            Assert.Equal(true, successObj.GetType().GetProperty("success").GetValue(successObj));
+            Assert.Equal(true, successObj?.GetType().GetProperty("success")?.GetValue(successObj));
         }
 
         [Fact]
@@ -205,11 +205,11 @@ namespace backend.UnitTests
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value
+            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
                 .GetType()
-                .GetProperty("message")
-                .GetValue(badRequestResult.Value)
-                .ToString();
+                .GetProperty("message")?
+                .GetValue(badRequestResult.Value)?
+                .ToString() ?? string.Empty;
             Assert.Equal("Ошибка при удалении поста", errorMessage);
         }
     }

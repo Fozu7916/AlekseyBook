@@ -240,11 +240,11 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<AuthResponseDto>>(result);
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value
+            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
                 .GetType()
-                .GetProperty("message")
-                .GetValue(badRequestResult.Value)
-                .ToString();
+                .GetProperty("message")?
+                .GetValue(badRequestResult.Value)?
+                .ToString() ?? string.Empty;
             Assert.Equal("Этот email уже зарегистрирован", errorMessage);
         }
 
@@ -343,11 +343,11 @@ namespace backend.UnitTests
             // Assert
             var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value
+            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
                 .GetType()
-                .GetProperty("message")
-                .GetValue(badRequestResult.Value)
-                .ToString();
+                .GetProperty("message")?
+                .GetValue(badRequestResult.Value)?
+                .ToString() ?? string.Empty;
             Assert.Equal("Размер файла превышает 10MB", errorMessage);
         }
 
