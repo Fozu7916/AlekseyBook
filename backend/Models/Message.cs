@@ -7,6 +7,11 @@ namespace backend.Models
     [Table("messages")]
     public class Message
     {
+        public Message()
+        {
+            CreatedAt = DateTime.UtcNow;
+        }
+
         [Key]
         public int Id { get; set; }
         
@@ -17,16 +22,16 @@ namespace backend.Models
         public int ReceiverId { get; set; }
         
         [Required]
-        public string Content { get; set; }
+        public required string Content { get; set; }
         
         public bool IsRead { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
         
         [ForeignKey("SenderId")]
-        public User Sender { get; set; }
+        public required User Sender { get; set; }
         
         [ForeignKey("ReceiverId")]
-        public User Receiver { get; set; }
+        public required User Receiver { get; set; }
     }
 } 

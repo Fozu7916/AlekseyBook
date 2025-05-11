@@ -125,7 +125,11 @@ namespace backend.Services
 
         private string GenerateJwtToken(UserResponseDto user)
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var jwtKey = _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT key is not configured");
+            var jwtIssuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT issuer is not configured");
+            var jwtAudience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT audience is not configured");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
@@ -137,8 +141,8 @@ namespace backend.Services
             };
 
             var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
+                issuer: jwtIssuer,
+                audience: jwtAudience,
                 claims: claims,
                 expires: DateTime.Now.AddDays(30),
                 signingCredentials: credentials
@@ -155,6 +159,9 @@ namespace backend.Services
 
         public async Task<UserResponseDto?> GetUserByUsername(string username)
         {
+            if (string.IsNullOrEmpty(username))
+                throw new ArgumentNullException(nameof(username));
+
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
             return user != null ? MapToDto(user) : null;
         }
@@ -170,18 +177,20 @@ namespace backend.Services
 
         public async Task<UserResponseDto?> UpdateUser(int id, UpdateUserDto updateUserDto)
         {
+            if (updateUserDto == null)
+                throw new ArgumentNullException(nameof(updateUserDto));
+
             try 
             {
                 var user = await _context.Users.FindAsync(id);
                 if (user == null) return null;
 
-                if (updateUserDto.Status.Length > 50)
-                {
-                    throw new Exception("Статус не может быть длиннее 50 символов");
-                }
-
                 if (!string.IsNullOrEmpty(updateUserDto.Status))
                 {
+                    if (updateUserDto.Status.Length > 50)
+                    {
+                        throw new Exception("Статус не может быть длиннее 50 символов");
+                    }
                     user.Status = updateUserDto.Status;
                 }
 
@@ -218,16 +227,27 @@ namespace backend.Services
 
         public string HashPassword(string password)
         {
+            if (string.IsNullOrEmpty(password))
+                throw new ArgumentNullException(nameof(password));
+
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
         public bool VerifyPassword(string password, string hashedPassword)
         {
+            if (string.IsNullOrEmpty(password))
+                throw new ArgumentNullException(nameof(password));
+            if (string.IsNullOrEmpty(hashedPassword))
+                throw new ArgumentNullException(nameof(hashedPassword));
+
             return BCrypt.Net.BCrypt.Verify(password, hashedPassword);
         }
 
         public async Task<UserResponseDto?> UpdateAvatar(int userId, IFormFile avatar)
         {
+            if (avatar == null)
+                throw new ArgumentNullException(nameof(avatar));
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return null;
 
@@ -284,31 +304,55 @@ namespace backend.Services
 
         public async Task<User> GetUserByIdAsync(int id)
         {
-            return await _context.Users.FindAsync(id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+                throw new Exception($"User not found: {id}");
+            return user;
         }
 
         public async Task<User> GetUserByUsernameAsync(string username)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (string.IsNullOrEmpty(username))
+                throw new ArgumentNullException(nameof(username));
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            if (user == null)
+                throw new Exception($"User not found: {username}");
+            return user;
         }
 
         public async Task<User> GetUserByEmailAsync(string email)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (string.IsNullOrEmpty(email))
+                throw new ArgumentNullException(nameof(email));
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                throw new Exception($"User not found: {email}");
+            return user;
         }
 
         public async Task<bool> IsEmailTakenAsync(string email)
         {
+            if (string.IsNullOrEmpty(email))
+                throw new ArgumentNullException(nameof(email));
+
             return await _context.Users.AnyAsync(u => u.Email == email);
         }
 
         public async Task<bool> IsUsernameTakenAsync(string username)
         {
+            if (string.IsNullOrEmpty(username))
+                throw new ArgumentNullException(nameof(username));
+
             return await _context.Users.AnyAsync(u => u.Username == username);
         }
 
         private static UserResponseDto MapToDto(User user)
         {
+            if (user == null)
+                throw new ArgumentNullException(nameof(user));
+
             return new UserResponseDto
             {
                 Id = user.Id,

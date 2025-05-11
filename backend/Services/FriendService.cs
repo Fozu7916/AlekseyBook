@@ -56,7 +56,9 @@ namespace backend.Services
                 FriendId = friendId,
                 Status = FriendStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                User = await _userService.GetUserByIdAsync(userId) ?? throw new Exception("User not found"),
+                FriendUser = await _userService.GetUserByIdAsync(friendId) ?? throw new Exception("Friend not found")
             };
 
             _context.Friends.Add(friendship);
@@ -137,7 +139,9 @@ namespace backend.Services
                     FriendId = blockedUserId,
                     Status = FriendStatus.Blocked,
                     CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    UpdatedAt = DateTime.UtcNow,
+                    User = await _userService.GetUserByIdAsync(userId) ?? throw new Exception("User not found"),
+                    FriendUser = await _userService.GetUserByIdAsync(blockedUserId) ?? throw new Exception("Blocked user not found")
                 });
             }
 

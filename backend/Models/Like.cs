@@ -6,6 +6,11 @@ namespace backend.Models
 {
     public class Like
     {
+        public Like()
+        {
+            CreatedAt = DateTime.UtcNow;
+        }
+
         [Key]
         public int Id { get; set; }
         
@@ -15,12 +20,12 @@ namespace backend.Models
         [Required]
         public int WallPostId { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
 
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public required User User { get; set; }
         
         [ForeignKey("WallPostId")]
-        public WallPost WallPost { get; set; }
+        public required WallPost WallPost { get; set; }
     }
 } 

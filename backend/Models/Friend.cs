@@ -7,6 +7,13 @@ namespace backend.Models
     [Table("friends")]
     public class Friend
     {
+        public Friend()
+        {
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+            Status = FriendStatus.Pending;
+        }
+
         [Key]
         public int Id { get; set; }
         
@@ -19,14 +26,14 @@ namespace backend.Models
         [Required]
         public FriendStatus Status { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public required User User { get; set; }
         
         [ForeignKey("FriendId")]
-        public User FriendUser { get; set; }
+        public required User FriendUser { get; set; }
     }
 
     public enum FriendStatus

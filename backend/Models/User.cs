@@ -7,6 +7,15 @@ namespace backend.Models
     [Table("users")]
     public class User
     {
+        public User()
+        {
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+            IsOnline = false;
+            IsVerified = false;
+            IsBanned = false;
+        }
+
         [Key]
         public int Id { get; set; }
 
@@ -17,19 +26,19 @@ namespace backend.Models
         [Required]
         [EmailAddress]
         [StringLength(100)]
-        public string Email { get; set; }
+        public required string Email { get; set; }
 
         [Required]
-        public string PasswordHash { get; set; }
+        public required string PasswordHash { get; set; }
 
         public string? AvatarUrl { get; set; }
 
         [StringLength(100)]
         public string? Status { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
         
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; }
         
         public DateTime? LastLogin { get; set; }
         
@@ -37,7 +46,7 @@ namespace backend.Models
         
         public bool IsBanned { get; set; }
 
-        public bool IsOnline { get; set; } = false;
+        public bool IsOnline { get; set; }
         
         public string? Bio { get; set; }
     }

@@ -31,26 +31,18 @@ namespace backend.Services
 
         public async Task<MessageDto> SendMessage(int senderId, SendMessageDto messageDto)
         {
-            var users = await _context.Users
-                .Where(u => u.Id == senderId || u.Id == messageDto.ReceiverId)
-                .Select(u => new UserResponseDto
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Email = u.Email,
-                    AvatarUrl = u.AvatarUrl,
-                    Status = u.Status,
-                    CreatedAt = u.CreatedAt,
-                    LastLogin = u.LastLogin,
-                    IsVerified = u.IsVerified,
-                    Bio = u.Bio
-                })
-                .ToDictionaryAsync(u => u.Id);
+            var sender = await _context.Users.FindAsync(senderId)
+                ?? throw new Exception("Отправитель не найден");
+            
+            var receiver = await _context.Users.FindAsync(messageDto.ReceiverId)
+                ?? throw new Exception("Получатель не найден");
 
             var message = new Message
             {
                 SenderId = senderId,
+                Sender = sender,
                 ReceiverId = messageDto.ReceiverId,
+                Receiver = receiver,
                 Content = messageDto.Content,
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow
@@ -65,8 +57,30 @@ namespace backend.Services
                 Content = message.Content,
                 IsRead = message.IsRead,
                 CreatedAt = message.CreatedAt,
-                Sender = users.GetValueOrDefault(senderId),
-                Receiver = users.GetValueOrDefault(messageDto.ReceiverId)
+                Sender = new UserResponseDto
+                {
+                    Id = sender.Id,
+                    Username = sender.Username,
+                    Email = sender.Email,
+                    AvatarUrl = sender.AvatarUrl,
+                    Status = sender.Status,
+                    CreatedAt = sender.CreatedAt,
+                    LastLogin = sender.LastLogin,
+                    IsVerified = sender.IsVerified,
+                    Bio = sender.Bio
+                },
+                Receiver = new UserResponseDto
+                {
+                    Id = receiver.Id,
+                    Username = receiver.Username,
+                    Email = receiver.Email,
+                    AvatarUrl = receiver.AvatarUrl,
+                    Status = receiver.Status,
+                    CreatedAt = receiver.CreatedAt,
+                    LastLogin = receiver.LastLogin,
+                    IsVerified = receiver.IsVerified,
+                    Bio = receiver.Bio
+                }
             };
         }
 
@@ -108,8 +122,8 @@ namespace backend.Services
                     Content = m.Content,
                     IsRead = m.IsRead,
                     CreatedAt = m.CreatedAt,
-                    Sender = users.GetValueOrDefault(m.SenderId),
-                    Receiver = users.GetValueOrDefault(m.ReceiverId)
+                    Sender = users.GetValueOrDefault(m.SenderId) ?? throw new Exception($"Sender not found: {m.SenderId}"),
+                    Receiver = users.GetValueOrDefault(m.ReceiverId) ?? throw new Exception($"Receiver not found: {m.ReceiverId}")
                 })
                 .ToList();
         }
@@ -148,15 +162,15 @@ namespace backend.Services
             return results
                 .Select(chat => new ChatPreviewDto
                 {
-                    User = users.GetValueOrDefault(chat.OtherUserId),
+                    User = users.GetValueOrDefault(chat.OtherUserId) ?? throw new Exception($"User not found: {chat.OtherUserId}"),
                     LastMessage = new MessageDto
                     {
                         Id = chat.LastMessage.Id,
                         Content = chat.LastMessage.Content,
                         IsRead = chat.LastMessage.IsRead,
                         CreatedAt = chat.LastMessage.CreatedAt,
-                        Sender = users.GetValueOrDefault(chat.LastMessage.SenderId),
-                        Receiver = users.GetValueOrDefault(chat.LastMessage.ReceiverId)
+                        Sender = users.GetValueOrDefault(chat.LastMessage.SenderId) ?? throw new Exception($"Sender not found: {chat.LastMessage.SenderId}"),
+                        Receiver = users.GetValueOrDefault(chat.LastMessage.ReceiverId) ?? throw new Exception($"Receiver not found: {chat.LastMessage.ReceiverId}")
                     },
                     UnreadCount = chat.UnreadCount
                 })
@@ -187,7 +201,7 @@ namespace backend.Services
                 .CountAsync(m => m.ReceiverId == userId && !m.IsRead);
         }
 
-        private async Task<MessageDto> MapToMessageDto(Message message)
+        private MessageDto MapToMessageDto(Message message)
         {
             return new MessageDto
             {

@@ -2,16 +2,19 @@ using Microsoft.EntityFrameworkCore;
 using backend.Data;
 using backend.Models;
 using backend.Models.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace backend.Services
 {
     public class LikeCommentService : ILikeCommentService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<LikeCommentService> _logger;
 
-        public LikeCommentService(ApplicationDbContext context)
+        public LikeCommentService(ApplicationDbContext context, ILogger<LikeCommentService> logger)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<List<LikeDto>> GetPostLikesAsync(int postId)
@@ -30,7 +33,7 @@ namespace backend.Services
                     Id = l.User.Id,
                     Username = l.User.Username,
                     Email = l.User.Email,
-                    AvatarUrl = l.User.AvatarUrl
+                    AvatarUrl = l.User.AvatarUrl ?? string.Empty
                 },
                 CreatedAt = l.CreatedAt
             }).ToList();
@@ -45,23 +48,25 @@ namespace backend.Services
             {
                 _context.Likes.Remove(existingLike);
                 await _context.SaveChangesAsync();
-                return null;
+                throw new Exception("Like removed");
             }
 
-            var post = await _context.WallPosts.FindAsync(postId);
-            if (post == null)
-                return null;
+            var post = await _context.WallPosts.FindAsync(postId) 
+                ?? throw new Exception("Post not found");
+
+            var user = await _context.Users.FindAsync(userId)
+                ?? throw new Exception("User not found");
 
             var like = new Like
             {
                 WallPostId = postId,
-                UserId = userId
+                UserId = userId,
+                WallPost = post,
+                User = user
             };
 
             _context.Likes.Add(like);
             await _context.SaveChangesAsync();
-
-            var user = await _context.Users.FindAsync(userId);
 
             return new LikeDto
             {
@@ -71,7 +76,7 @@ namespace backend.Services
                     Id = user.Id,
                     Username = user.Username,
                     Email = user.Email,
-                    AvatarUrl = user.AvatarUrl
+                    AvatarUrl = user.AvatarUrl ?? string.Empty
                 },
                 CreatedAt = like.CreatedAt
             };
@@ -87,11 +92,16 @@ namespace backend.Services
                 .ThenBy(c => c.Id)
                 .ToListAsync();
 
-            var userId = _context.Comments.FirstOrDefault()?.AuthorId;
+            var firstComment = await _context.Comments
+                .FirstOrDefaultAsync(c => c.WallPostId == postId);
 
-            var commentLikes = await _context.CommentLikes
-                .Where(cl => cl.UserId == userId && comments.Select(c => c.Id).Contains(cl.CommentId))
-                .ToListAsync();
+            var userId = firstComment?.AuthorId;
+
+            var commentLikes = userId.HasValue
+                ? await _context.CommentLikes
+                    .Where(cl => cl.UserId == userId && comments.Select(c => c.Id).Contains(cl.CommentId))
+                    .ToListAsync()
+                : new List<CommentLike>();
 
             return comments.Select(c => new CommentDto
             {
@@ -102,7 +112,7 @@ namespace backend.Services
                     Id = c.Author.Id,
                     Username = c.Author.Username,
                     Email = c.Author.Email,
-                    AvatarUrl = c.Author.AvatarUrl
+                    AvatarUrl = c.Author.AvatarUrl ?? string.Empty
                 },
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt,
@@ -114,29 +124,37 @@ namespace backend.Services
 
         public async Task<CommentDto> CreateCommentAsync(CreateCommentDto dto, int authorId)
         {
-            var post = await _context.WallPosts.FindAsync(dto.WallPostId);
-            if (post == null)
-                return null;
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            var post = await _context.WallPosts.FindAsync(dto.WallPostId)
+                ?? throw new Exception("Post not found");
 
             if (dto.ParentId.HasValue)
             {
                 var parentComment = await _context.Comments.FindAsync(dto.ParentId.Value);
                 if (parentComment == null || parentComment.WallPostId != dto.WallPostId)
-                    return null;
+                {
+                    throw new Exception("Parent comment not found or belongs to different post");
+                }
             }
+
+            var author = await _context.Users.FindAsync(authorId)
+                ?? throw new Exception("User not found");
 
             var comment = new Comment
             {
                 Content = dto.Content,
                 WallPostId = dto.WallPostId,
                 AuthorId = authorId,
-                ParentId = dto.ParentId
+                ParentId = dto.ParentId,
+                Author = author,
+                WallPost = post,
+                Replies = new List<Comment>()
             };
 
             _context.Comments.Add(comment);
             await _context.SaveChangesAsync();
-
-            var author = await _context.Users.FindAsync(authorId);
 
             return new CommentDto
             {
@@ -147,21 +165,28 @@ namespace backend.Services
                     Id = author.Id,
                     Username = author.Username,
                     Email = author.Email,
-                    AvatarUrl = author.AvatarUrl
+                    AvatarUrl = author.AvatarUrl ?? string.Empty
                 },
                 CreatedAt = comment.CreatedAt,
-                UpdatedAt = comment.UpdatedAt
+                UpdatedAt = comment.UpdatedAt,
+                ParentId = comment.ParentId
             };
         }
 
         public async Task<CommentDto> UpdateCommentAsync(int commentId, UpdateCommentDto dto, int userId)
         {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
             var comment = await _context.Comments
                 .Include(c => c.Author)
-                .FirstOrDefaultAsync(c => c.Id == commentId);
+                .FirstOrDefaultAsync(c => c.Id == commentId)
+                ?? throw new Exception("Comment not found");
 
-            if (comment == null || comment.AuthorId != userId)
-                return null;
+            if (comment.AuthorId != userId)
+            {
+                throw new Exception("You don't have permission to update this comment");
+            }
 
             comment.Content = dto.Content;
             comment.UpdatedAt = DateTime.UtcNow;
@@ -177,18 +202,23 @@ namespace backend.Services
                     Id = comment.Author.Id,
                     Username = comment.Author.Username,
                     Email = comment.Author.Email,
-                    AvatarUrl = comment.Author.AvatarUrl
+                    AvatarUrl = comment.Author.AvatarUrl ?? string.Empty
                 },
                 CreatedAt = comment.CreatedAt,
-                UpdatedAt = comment.UpdatedAt
+                UpdatedAt = comment.UpdatedAt,
+                ParentId = comment.ParentId
             };
         }
 
         public async Task DeleteCommentAsync(int commentId, int userId)
         {
-            var comment = await _context.Comments.FindAsync(commentId);
-            if (comment == null || comment.AuthorId != userId)
-                return;
+            var comment = await _context.Comments.FindAsync(commentId)
+                ?? throw new Exception("Comment not found");
+
+            if (comment.AuthorId != userId)
+            {
+                throw new Exception("You don't have permission to delete this comment");
+            }
 
             _context.Comments.Remove(comment);
             await _context.SaveChangesAsync();

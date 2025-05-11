@@ -7,11 +7,18 @@ namespace backend.Models
 {
     public class Comment
     {
+        public Comment()
+        {
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+            Replies = new List<Comment>();
+        }
+
         [Key]
         public int Id { get; set; }
         
         [Required]
-        public string Content { get; set; }
+        public required string Content { get; set; }
         
         [Required]
         public int AuthorId { get; set; }
@@ -19,20 +26,20 @@ namespace backend.Models
         [Required]
         public int WallPostId { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
         public int? ParentId { get; set; }
         
         [ForeignKey("ParentId")]
-        public Comment Parent { get; set; }
+        public Comment? Parent { get; set; }
         
-        public ICollection<Comment> Replies { get; set; }
+        public required ICollection<Comment> Replies { get; set; }
 
         [ForeignKey("AuthorId")]
-        public User Author { get; set; }
+        public required User Author { get; set; }
         
         [ForeignKey("WallPostId")]
-        public WallPost WallPost { get; set; }
+        public required WallPost WallPost { get; set; }
     }
 } 

@@ -7,22 +7,32 @@ namespace backend.Hubs
 {
     public class ChatHub : Hub
     {
-        private static Dictionary<string, string> UserConnections = new Dictionary<string, string>();
+        private static readonly Dictionary<string, string> UserConnections = new();
         private readonly ILogger<ChatHub> _logger;
 
         public ChatHub(ILogger<ChatHub> logger)
         {
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task JoinChat(string userId)
         {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new ArgumentNullException(nameof(userId));
+            }
+
             UserConnections[Context.ConnectionId] = userId;
             await Groups.AddToGroupAsync(Context.ConnectionId, userId);
         }
 
         public async Task LeaveChat(string userId)
         {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new ArgumentNullException(nameof(userId));
+            }
+
             if (UserConnections.ContainsKey(Context.ConnectionId))
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
@@ -32,7 +42,12 @@ namespace backend.Hubs
 
         public async Task SendTypingStatus(string receiverId, bool isTyping)
         {
-            if (UserConnections.TryGetValue(Context.ConnectionId, out string senderId))
+            if (string.IsNullOrEmpty(receiverId))
+            {
+                throw new ArgumentNullException(nameof(receiverId));
+            }
+
+            if (UserConnections.TryGetValue(Context.ConnectionId, out string? senderId) && senderId != null)
             {
                 await Clients.Group(receiverId).SendAsync("ReceiveTypingStatus", senderId, isTyping);
             }
@@ -45,7 +60,12 @@ namespace backend.Hubs
 
         public async Task SendMessage(Message message)
         {
-            if (UserConnections.TryGetValue(Context.ConnectionId, out string senderId))
+            if (message == null)
+            {
+                throw new ArgumentNullException(nameof(message));
+            }
+
+            if (UserConnections.TryGetValue(Context.ConnectionId, out string? senderId) && senderId != null)
             {
                 try 
                 {
@@ -66,9 +86,9 @@ namespace backend.Hubs
             }
         }
 
-        public override async Task OnDisconnectedAsync(Exception exception)
+        public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            if (UserConnections.TryGetValue(Context.ConnectionId, out string userId))
+            if (UserConnections.TryGetValue(Context.ConnectionId, out string? userId) && userId != null)
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
                 UserConnections.Remove(Context.ConnectionId);

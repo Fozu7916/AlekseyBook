@@ -7,32 +7,46 @@ namespace backend.Models
 {
     public class Community
     {
+        public Community()
+        {
+            CreatedAt = DateTime.UtcNow;
+            UpdatedAt = DateTime.UtcNow;
+            Members = new List<CommunityMember>();
+            Posts = new List<CommunityPost>();
+        }
+
         [Key]
         public int Id { get; set; }
         
         [Required]
         [StringLength(100)]
-        public string Name { get; set; }
+        public required string Name { get; set; }
         
-        public string Description { get; set; }
+        public required string Description { get; set; }
         
-        public string AvatarUrl { get; set; }
+        public required string AvatarUrl { get; set; }
         
         [Required]
         public int CreatorId { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
         [ForeignKey("CreatorId")]
-        public User Creator { get; set; }
+        public required User Creator { get; set; }
         
-        public ICollection<CommunityMember> Members { get; set; }
-        public ICollection<CommunityPost> Posts { get; set; }
+        public required ICollection<CommunityMember> Members { get; set; }
+        public required ICollection<CommunityPost> Posts { get; set; }
     }
 
     public class CommunityMember
     {
+        public CommunityMember()
+        {
+            Role = "member";
+            JoinedAt = DateTime.UtcNow;
+        }
+
         [Key]
         public int Id { get; set; }
         
@@ -44,19 +58,24 @@ namespace backend.Models
         
         [Required]
         [StringLength(20)]
-        public string Role { get; set; } = "member"; // admin, moderator, member
+        public required string Role { get; set; } // admin, moderator, member
         
-        public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+        public DateTime JoinedAt { get; set; }
 
         [ForeignKey("CommunityId")]
-        public Community Community { get; set; }
+        public required Community Community { get; set; }
         
         [ForeignKey("UserId")]
-        public User User { get; set; }
+        public required User User { get; set; }
     }
 
     public class CommunityPost
     {
+        public CommunityPost()
+        {
+            CreatedAt = DateTime.UtcNow;
+        }
+
         [Key]
         public int Id { get; set; }
         
@@ -67,14 +86,14 @@ namespace backend.Models
         public int AuthorId { get; set; }
         
         [Required]
-        public string Content { get; set; }
+        public required string Content { get; set; }
         
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; }
 
         [ForeignKey("CommunityId")]
-        public Community Community { get; set; }
+        public required Community Community { get; set; }
         
         [ForeignKey("AuthorId")]
-        public User Author { get; set; }
+        public required User Author { get; set; }
     }
 } 
