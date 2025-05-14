@@ -20,7 +20,8 @@ builder.Services.AddCors(options =>
         builder.WithOrigins(Config.FrontendUrl)
                .AllowAnyMethod()
                .AllowAnyHeader()
-               .AllowCredentials();
+               .AllowCredentials()
+               .SetIsOriginAllowed(_ => true);
     });
 });
 
@@ -39,8 +40,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = Config.BackendUrl,
-        ValidAudience = Config.FrontendUrl,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT:Key не настроен"))
         )

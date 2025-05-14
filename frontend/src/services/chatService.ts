@@ -3,6 +3,7 @@ import { userService } from './userService';
 import { Message } from './userService';
 import * as signalR from '@microsoft/signalr';
 import { logger } from './loggerService';
+import config from '../config';
 
 export class ChatService {
   private connection: HubConnection | null = null;
@@ -57,11 +58,11 @@ export class ChatService {
       }
 
       this.connection = new HubConnectionBuilder()
-        .withUrl('http://localhost:5038/chatHub', {
-          accessTokenFactory: () => localStorage.getItem('token') || '',
+        .withUrl(`${config.baseUrl}/chatHub`, {
+          accessTokenFactory: () => token,
           transport: signalR.HttpTransportType.WebSockets,
           skipNegotiation: true,
-          logMessageContent: false
+          withCredentials: true
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .configureLogging(signalR.LogLevel.None)
