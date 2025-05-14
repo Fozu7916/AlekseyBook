@@ -1,5 +1,6 @@
 import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { logger } from './loggerService';
+import { API_CONFIG } from '../config/api.config';
 
 interface OnlineStatusCallback {
   (userId: number, isOnline: boolean, lastLogin: Date): void;
@@ -27,7 +28,7 @@ class OnlineStatusService {
       }
 
       this.connection = new HubConnectionBuilder()
-        .withUrl(`http://localhost:5038/onlineStatusHub?access_token=${token}`)
+        .withUrl(`${API_CONFIG.ONLINE_STATUS_HUB_URL}?access_token=${token}`)
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
         .build();
 

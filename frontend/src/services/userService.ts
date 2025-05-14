@@ -1,4 +1,5 @@
 import { logger } from './loggerService';
+import { API_CONFIG } from '../config/api.config';
 
 export interface User {
   id: number;
@@ -62,7 +63,7 @@ interface ChatPreview {
 }
 
 class UserService {
-  private baseUrl = 'http://localhost:5038/api';
+  private baseUrl = API_CONFIG.API_URL;
   private token: string | null = null;
 
   constructor() {

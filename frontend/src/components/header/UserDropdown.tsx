@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './UserDropdown.css';
 import { User } from '../../services/userService';
+import { getMediaUrl } from '../../config/api.config';
 
 interface UserDropdownProps {
   user?: User | null;
@@ -51,7 +52,7 @@ const UserDropdown: React.FC<UserDropdownProps> = ({ user, onLogout, onProfileCl
         onClick={() => setIsOpen(!isOpen)}
       >
         <img 
-          src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+          src={getMediaUrl(user.avatarUrl)} 
           alt={user.username}
           className="user-avatar"
         />

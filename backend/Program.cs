@@ -7,6 +7,7 @@ using System.Text;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
+using backend;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,7 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.WithOrigins("http://localhost:3000", "http://localhost:5173")
+        builder.WithOrigins(Config.FrontendUrl)
                .AllowAnyMethod()
                .AllowAnyHeader()
                .AllowCredentials();
@@ -53,7 +54,8 @@ builder.Services.AddAuthentication(options =>
             var path = context.HttpContext.Request.Path;
             
             if (!string.IsNullOrEmpty(accessToken) && 
-                (path.StartsWithSegments("/chatHub") || path.StartsWithSegments("/onlineStatusHub")))
+                (path.StartsWithSegments(Config.ChatHubUrl.Replace(Config.BackendUrl, "")) || 
+                 path.StartsWithSegments(Config.OnlineStatusHubUrl.Replace(Config.BackendUrl, ""))))
             {
                 context.Token = accessToken;
             }
@@ -131,8 +133,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<ChatHub>("/chatHub");
-app.MapHub<OnlineStatusHub>("/onlineStatusHub");
+app.MapHub<ChatHub>(Config.ChatHubUrl.Replace(Config.BackendUrl, ""));
+app.MapHub<OnlineStatusHub>(Config.OnlineStatusHubUrl.Replace(Config.BackendUrl, ""));
 
 app.Run();
 

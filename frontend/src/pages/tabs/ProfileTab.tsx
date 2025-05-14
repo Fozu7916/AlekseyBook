@@ -7,6 +7,7 @@ import { postService, WallPost, Comment } from '../../services/postService';
 import { onlineStatusService } from '../../services/onlineStatusService';
 import './ProfileTab.css';
 import { logger } from '../../services/loggerService';
+import { getMediaUrl } from '../../config/api.config';
 
 interface ProfileTabProps extends TabProps {
   username: string;
@@ -732,7 +733,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
           style={{ cursor: isOwner ? 'pointer' : 'default' }}
         >
           <img 
-            src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+            src={getMediaUrl(user.avatarUrl)} 
             alt={user.username} 
           />
           {user.isOnline && <div className="online-status-indicator" />}
@@ -858,7 +859,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                 <div key={post.id} className="post-card">
                   <div className="post-header">
                     <img 
-                      src={post.authorAvatarUrl ? `http://localhost:5038${post.authorAvatarUrl}` : '/images/default-avatar.svg'} 
+                      src={getMediaUrl(post.authorAvatarUrl)} 
                       alt={post.authorName} 
                       className="post-avatar"
                     />
@@ -931,7 +932,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                               onClick={() => navigate(`/profile/${comment.author.username}`)}
                             >
                               <img 
-                                src={comment.author.avatarUrl ? `http://localhost:5038${comment.author.avatarUrl}` : '/images/default-avatar.svg'} 
+                                src={getMediaUrl(comment.author.avatarUrl)} 
                                 alt={comment.author.username} 
                                 className="comment-avatar"
                               />
@@ -1089,7 +1090,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                 {friends.slice(0, 3).map(friend => (
                   <div key={friend.id} className="friend-card" onClick={() => navigate(`/profile/${friend.username}`)}>
                     <img 
-                      src={friend.avatarUrl ? `http://localhost:5038${friend.avatarUrl}` : '/images/default-avatar.svg'} 
+                      src={getMediaUrl(friend.avatarUrl)} 
                       alt={friend.username} 
                       className="friend-avatar"
                     />

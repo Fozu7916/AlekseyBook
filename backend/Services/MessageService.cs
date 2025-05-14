@@ -131,14 +131,14 @@ namespace backend.Services
         public async Task<List<ChatPreviewDto>> GetUserChats(int userId)
         {
             var query = from m in _context.Messages
-                       where m.SenderId == userId || m.ReceiverId == userId
-                       group m by m.SenderId == userId ? m.ReceiverId : m.SenderId into g
-                       select new
-                       {
-                           OtherUserId = g.Key,
-                           LastMessage = g.OrderByDescending(x => x.CreatedAt).First(),
-                           UnreadCount = g.Count(x => !x.IsRead && x.ReceiverId == userId)
-                       };
+                        where m.SenderId == userId || m.ReceiverId == userId
+                        group m by m.SenderId == userId ? m.ReceiverId : m.SenderId into g
+                        select new
+                        {
+                            OtherUserId = g.Key,
+                            LastMessage = g.OrderByDescending(x => x.CreatedAt).First(),
+                            UnreadCount = g.Count(x => !x.IsRead && x.ReceiverId == userId)
+                        };
 
             var results = await query.ToListAsync();
             
@@ -160,17 +160,21 @@ namespace backend.Services
                 .ToDictionaryAsync(u => u.Id);
 
             return results
+                .Where(chat => 
+                    users.ContainsKey(chat.OtherUserId) && 
+                    users.ContainsKey(chat.LastMessage.SenderId) && 
+                    users.ContainsKey(chat.LastMessage.ReceiverId))
                 .Select(chat => new ChatPreviewDto
                 {
-                    User = users.GetValueOrDefault(chat.OtherUserId) ?? throw new Exception($"User not found: {chat.OtherUserId}"),
+                    User = users[chat.OtherUserId],
                     LastMessage = new MessageDto
                     {
                         Id = chat.LastMessage.Id,
                         Content = chat.LastMessage.Content,
                         IsRead = chat.LastMessage.IsRead,
                         CreatedAt = chat.LastMessage.CreatedAt,
-                        Sender = users.GetValueOrDefault(chat.LastMessage.SenderId) ?? throw new Exception($"Sender not found: {chat.LastMessage.SenderId}"),
-                        Receiver = users.GetValueOrDefault(chat.LastMessage.ReceiverId) ?? throw new Exception($"Receiver not found: {chat.LastMessage.ReceiverId}")
+                        Sender = users[chat.LastMessage.SenderId],
+                        Receiver = users[chat.LastMessage.ReceiverId]
                     },
                     UnreadCount = chat.UnreadCount
                 })

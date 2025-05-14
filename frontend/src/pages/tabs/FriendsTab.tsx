@@ -4,6 +4,7 @@ import './Tabs.css';
 import './FriendsTab.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
+import { getMediaUrl } from '../../config/api.config';
 
 const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const [friends, setFriends] = useState<User[]>([]);
@@ -115,7 +116,7 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                   <div key={friend.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${friend.username}`)}>
                       <img 
-                        src={friend.avatarUrl ? `http://localhost:5038${friend.avatarUrl}` : '/images/default-avatar.svg'} 
+                        src={getMediaUrl(friend.avatarUrl)} 
                         alt={friend.username} 
                         className="friend-avatar"
                       />
@@ -151,7 +152,7 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                   <div key={user.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
                       <img 
-                        src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+                        src={getMediaUrl(user.avatarUrl)} 
                         alt={user.username} 
                         className="friend-avatar"
                       />
@@ -187,7 +188,7 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                   <div key={user.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
                       <img 
-                        src={user.avatarUrl ? `http://localhost:5038${user.avatarUrl}` : '/images/default-avatar.svg'} 
+                        src={getMediaUrl(user.avatarUrl)} 
                         alt={user.username} 
                         className="friend-avatar"
                       />
