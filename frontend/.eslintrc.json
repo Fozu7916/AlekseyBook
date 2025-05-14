@@ -1,6 +1,5 @@
 {
   "extends": ["react-app", "react-app/jest"],
-  "plugins": ["react"],
   "settings": {
     "react": {
       "version": "detect"
