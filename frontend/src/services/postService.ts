@@ -1,4 +1,3 @@
-import config from '../config';
 import { logger } from './loggerService';
 
 export interface WallPost {
@@ -50,7 +49,7 @@ export interface Comment {
 }
 
 class PostService {
-  private baseUrl = config.apiUrl;
+  private baseUrl = 'http://localhost:5038/api';
   private token: string | null = null;
 
   constructor() {

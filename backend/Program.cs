@@ -7,7 +7,6 @@ using System.Text;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
-using backend;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,11 +16,10 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.WithOrigins(Config.FrontendUrl)
+        builder.WithOrigins("http://localhost:3000", "http://localhost:5173")
                .AllowAnyMethod()
                .AllowAnyHeader()
-               .AllowCredentials()
-               .SetIsOriginAllowed(_ => true);
+               .AllowCredentials();
     });
 });
 

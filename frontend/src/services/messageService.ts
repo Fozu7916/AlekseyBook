@@ -1,4 +1,3 @@
-import config from '../config';
 import { Message, User } from './userService';
 import { logger } from './loggerService';
 
@@ -9,7 +8,7 @@ interface Chat {
 }
 
 class MessageService {
-  private baseUrl = config.apiUrl;
+  private baseUrl = 'http://localhost:5038/api';
   private token: string | null = null;
 
   constructor() {
