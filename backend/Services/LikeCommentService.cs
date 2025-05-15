@@ -39,7 +39,7 @@ namespace backend.Services
             }).ToList();
         }
 
-        public async Task<LikeDto> ToggleLikeAsync(int postId, int userId)
+        public async Task<LikeDto?> ToggleLikeAsync(int postId, int userId)
         {
             var existingLike = await _context.Likes
                 .FirstOrDefaultAsync(l => l.WallPostId == postId && l.UserId == userId);
