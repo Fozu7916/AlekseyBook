@@ -5,22 +5,37 @@ import * as signalR from '@microsoft/signalr';
 import { logger } from './loggerService';
 import { API_CONFIG } from '../config/api.config';
 
-export class ChatService {
+export interface IChatService {
+  startConnection(): Promise<void>;
+  stopConnection(): Promise<void>;
+  isConnected(): boolean;
+  onMessage(callback: (message: Message) => void): () => void;
+  onTypingStatus(callback: (userId: string, isTyping: boolean) => void): () => void;
+  onMessageStatusUpdate(callback: (messageId: number, senderId: number, receiverId: number, isRead: boolean) => void): () => void;
+  sendTypingStatus(receiverId: string, isTyping: boolean): Promise<void>;
+}
+
+export class ChatService implements IChatService {
   private connection: HubConnection | null = null;
   private typingCallbacks: ((userId: string, isTyping: boolean) => void)[] = [];
   private messageCallbacks: ((message: Message) => void)[] = [];
+  private messageStatusCallbacks: ((messageId: number, senderId: number, receiverId: number, isRead: boolean) => void)[] = [];
   private connectionPromise: Promise<void> | null = null;
   private isConnecting: boolean = false;
   private shouldStop: boolean = false;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private lastReconnectAttempt: number = 0;
+  private readonly MIN_RECONNECT_INTERVAL = 5000; // 5 секунд
 
-  public async startConnection() {
+  public async startConnection(): Promise<void> {
     const token = localStorage.getItem('token');
     if (!token) {
       return;
     }
 
     if (this.isConnecting) {
-      return this.connectionPromise;
+      await this.connectionPromise;
+      return;
     }
 
     if (this.connection?.state === 'Connected') {
@@ -64,8 +79,30 @@ export class ChatService {
           skipNegotiation: true,
           logMessageContent: false
         })
-        .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-        .configureLogging(signalR.LogLevel.None)
+        .withAutomaticReconnect({
+          nextRetryDelayInMilliseconds: (retryContext) => {
+            const now = Date.now();
+            if (now - this.lastReconnectAttempt < this.MIN_RECONNECT_INTERVAL) {
+              return this.MIN_RECONNECT_INTERVAL;
+            }
+            this.lastReconnectAttempt = now;
+            
+            if (retryContext.previousRetryCount === 0) {
+              return 0;
+            }
+            if (retryContext.previousRetryCount < 3) {
+              return 2000;
+            }
+            if (retryContext.previousRetryCount < 5) {
+              return 5000;
+            }
+            if (retryContext.previousRetryCount < 10) {
+              return 10000;
+            }
+            return 30000;
+          }
+        })
+        .configureLogging(signalR.LogLevel.Information)
         .build();
 
       this.setupHandlers();
@@ -75,6 +112,7 @@ export class ChatService {
       }
 
       await this.connection.start();
+      logger.error('SignalR соединение установлено');
 
       if (this.shouldStop) {
         await this.connection.stop();
@@ -85,22 +123,100 @@ export class ChatService {
       const currentUser = await userService.getCurrentUser();
       if (currentUser && this.connection && this.connection.state === 'Connected') {
         await this.connection.invoke('JoinChat', currentUser.id.toString());
+        logger.error('Успешно присоединились к чату');
       }
     } catch (err) {
       logger.error('Ошибка подключения SignalR', err);
       if (!this.shouldStop) {
-        setTimeout(() => {
-          if (!this.isConnected() && !this.shouldStop) {
-            this.startConnection();
-          }
-        }, 5000);
+        this.scheduleReconnect();
       }
       throw err;
     }
   }
 
+  private scheduleReconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+
+    this.reconnectTimer = setTimeout(async () => {
+      if (!this.isConnected() && !this.shouldStop && !this.isConnecting) {
+        logger.error('Попытка переподключения к SignalR...');
+        try {
+          await this.startConnection();
+        } catch (err) {
+          logger.error('Ошибка при попытке переподключения', err);
+          this.scheduleReconnect();
+        }
+      }
+    }, this.MIN_RECONNECT_INTERVAL);
+  }
+
+  private setupHandlers() {
+    if (!this.connection) return;
+
+    this.connection.onreconnecting(() => {
+      logger.error('SignalR пытается переподключиться...');
+    });
+
+    this.connection.onreconnected(async () => {
+      logger.error('SignalR успешно переподключился');
+      try {
+        const currentUser = await userService.getCurrentUser();
+        if (currentUser && this.connection?.state === 'Connected') {
+          await this.connection.invoke('JoinChat', currentUser.id.toString());
+          logger.error('Успешно переприсоединились к чату после переподключения');
+        }
+      } catch (err) {
+        logger.error('Ошибка при переприсоединении к чату', err);
+      }
+    });
+
+    this.connection.onclose((error) => {
+      logger.error('SignalR соединение закрыто', error);
+      if (!this.shouldStop) {
+        this.scheduleReconnect();
+      }
+    });
+
+    this.connection.on('ReceiveMessage', (message: Message) => {
+      this.messageCallbacks.forEach(callback => {
+        try {
+          callback(message);
+        } catch (err) {
+          logger.error('Ошибка в обработчике сообщения:', err);
+        }
+      });
+    });
+
+    this.connection.on('TypingStatus', (userId: string, isTyping: boolean) => {
+      this.typingCallbacks.forEach(callback => {
+        try {
+          callback(userId, isTyping);
+        } catch (err) {
+          logger.error('Ошибка в обработчике статуса печатания:', err);
+        }
+      });
+    });
+
+    this.connection.on('MessageStatusUpdate', (messageId: number, senderId: number, receiverId: number, isRead: boolean) => {
+      this.messageStatusCallbacks.forEach(callback => {
+        try {
+          callback(messageId, senderId, receiverId, isRead);
+        } catch (err) {
+          logger.error('Ошибка в обработчике статуса сообщения:', err);
+        }
+      });
+    });
+  }
+
   public async stopConnection() {
     this.shouldStop = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
 
     if (this.connection) {
       try {
@@ -114,6 +230,7 @@ export class ChatService {
 
       try {
         await this.connection.stop();
+        logger.error('SignalR соединение успешно закрыто');
       } catch (err) {
         logger.error('Ошибка при отключении SignalR', err);
       } finally {
@@ -153,55 +270,6 @@ export class ChatService {
     throw new Error('Не удалось отправить сообщение после нескольких попыток');
   }
 
-  private setupHandlers() {
-    if (!this.connection) return;
-
-    this.connection.on('ReceiveMessage', (message: Message) => {
-      this.messageCallbacks.forEach(callback => {
-        try {
-          callback(message);
-        } catch (err) {
-          logger.error('Ошибка в обработчике сообщения:', err);
-        }
-      });
-    });
-
-    this.connection.on('TypingStatus', (userId: string, isTyping: boolean) => {
-      this.typingCallbacks.forEach(callback => {
-        try {
-          callback(userId, isTyping);
-        } catch (err) {
-          logger.error('Ошибка в обработчике статуса печатания:', err);
-        }
-      });
-    });
-
-    this.connection.on('MessageStatusUpdate', (messageId: number, isRead: boolean) => {
-      this.messageCallbacks.forEach(callback => {
-        try {
-          callback({ id: messageId, isRead } as Message);
-        } catch (err) {
-          logger.error('Ошибка в обработчике статуса сообщения:', err);
-        }
-      });
-    });
-
-    this.connection.onreconnecting(() => {});
-
-    this.connection.onreconnected(async () => {
-      try {
-        const currentUser = await userService.getCurrentUser();
-        if (currentUser && this.connection?.state === 'Connected') {
-          await this.connection.invoke('JoinChat', currentUser.id.toString());
-        }
-      } catch (err) {
-        logger.error('Ошибка при переприсоединении к чату', err);
-      }
-    });
-
-    this.connection.onclose(() => {});
-  }
-
   public isConnected(): boolean {
     return this.connection?.state === 'Connected';
   }
@@ -231,6 +299,13 @@ export class ChatService {
       logger.error('Ошибка при отправке статуса печатания', err);
     }
   }
+
+  public onMessageStatusUpdate(callback: (messageId: number, senderId: number, receiverId: number, isRead: boolean) => void) {
+    this.messageStatusCallbacks.push(callback);
+    return () => {
+      this.messageStatusCallbacks = this.messageStatusCallbacks.filter(cb => cb !== callback);
+    };
+  }
 }
 
-export const chatService = new ChatService(); 
+export const chatService: IChatService = new ChatService(); 

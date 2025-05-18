@@ -7,6 +7,8 @@ using backend.Models;
 using backend.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 using backend.Services.Interfaces;
+using backend.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace backend.Services
 {
@@ -14,11 +16,16 @@ namespace backend.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IUserService _userService;
+        private readonly IHubContext<ChatHub> _hubContext;
 
-        public MessageService(ApplicationDbContext context, IUserService userService)
+        public MessageService(
+            ApplicationDbContext context, 
+            IUserService userService,
+            IHubContext<ChatHub> hubContext)
         {
             _context = context;
             _userService = userService;
+            _hubContext = hubContext;
         }
 
         public async Task<MessageDto> SendMessage(int senderId, SendMessageDto messageDto)
@@ -182,6 +189,8 @@ namespace backend.Services
             foreach (var message in unreadMessages)
             {
                 message.Status = MessageStatus.Read;
+                await _hubContext.Clients.Groups(new[] { message.SenderId.ToString(), message.ReceiverId.ToString() })
+                    .SendAsync("MessageStatusUpdate", message.Id, message.SenderId, message.ReceiverId, true);
             }
 
             await _context.SaveChangesAsync();

@@ -378,9 +378,51 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       }
     });
 
+    const unsubscribeMessageStatus = chatService.onMessageStatusUpdate(async (messageId: number, senderId: number, receiverId: number, isRead: boolean) => {
+      logger.error('Получено обновление статуса:', { messageId, senderId, receiverId, isRead });
+      
+      try {
+        // Обновляем сообщения только если это текущий чат
+        const currentUser = await userService.getCurrentUser();
+        if (!currentUser) return;
+
+        const isCurrentChat = selectedChat && (
+          (senderId === selectedChat.id && receiverId === currentUser.id) ||
+          (senderId === currentUser.id && receiverId === selectedChat.id)
+        );
+
+        if (isCurrentChat) {
+          logger.error('Обновляем статус сообщения в текущем чате');
+          setMessages(prev => {
+            const messageIndex = prev.findIndex(m => m.id === messageId);
+            if (messageIndex === -1) {
+              logger.error('Сообщение не найдено:', messageId);
+              return prev;
+            }
+
+            logger.error('Сообщение найдено, обновляем статус');
+            const newMessages = [...prev];
+            newMessages[messageIndex] = {
+              ...newMessages[messageIndex],
+              isRead
+            };
+            return newMessages;
+          });
+
+          // Обновляем список чатов для актуализации счетчиков непрочитанных сообщений
+          if (loadChatsRef.current) {
+            loadChatsRef.current(false);
+          }
+        }
+      } catch (err) {
+        logger.error('Ошибка при обработке обновления статуса:', err);
+      }
+    });
+
     return () => {
       unsubscribeMessage();
       unsubscribeTyping();
+      unsubscribeMessageStatus();
     };
   }, [isActive, selectedChat, markMessagesAsRead]);
 
