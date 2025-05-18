@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using backend.Models;
 using Microsoft.Extensions.Logging;
 using backend.Hubs.Interfaces;
+using backend.Services.Interfaces;
 
 namespace backend.Hubs
 {
@@ -10,10 +11,12 @@ namespace backend.Hubs
     {
         private static readonly Dictionary<string, string> UserConnections = new();
         private readonly ILogger<ChatHub> _logger;
+        private readonly IMessageService _messageService;
 
-        public ChatHub(ILogger<ChatHub> logger)
+        public ChatHub(ILogger<ChatHub> logger, IMessageService messageService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _messageService = messageService ?? throw new ArgumentNullException(nameof(messageService));
         }
 
         public async Task JoinChat(string userId)
@@ -70,8 +73,8 @@ namespace backend.Hubs
             {
                 try 
                 {
-                    await Clients.Group(message.ReceiverId.ToString()).SendAsync("ReceiveMessage", message);
-                    await Clients.Group(senderId).SendAsync("ReceiveMessage", message);
+                    var recipientGroups = new[] { message.ReceiverId.ToString(), senderId };
+                    await Clients.Groups(recipientGroups).SendAsync("ReceiveMessage", message);
                 }
                 catch (Exception ex)
                 {
@@ -84,6 +87,46 @@ namespace backend.Hubs
             {
                 _logger.LogError("Попытка отправить сообщение от неавторизованного пользователя. ConnectionId: {ConnectionId}", 
                     Context.ConnectionId);
+            }
+        }
+
+        public async Task UpdateMessageStatus(int messageId, bool isRead)
+        {
+            try
+            {
+                var userId = UserConnections[Context.ConnectionId];
+                if (string.IsNullOrEmpty(userId))
+                {
+                    throw new InvalidOperationException("Пользователь не найден");
+                }
+
+                var message = await _messageService.GetMessageById(messageId);
+                if (message == null)
+                {
+                    throw new InvalidOperationException("Сообщение не найдено");
+                }
+
+                if (message.ReceiverId != int.Parse(userId))
+                {
+                    throw new InvalidOperationException("Нет прав на изменение статуса этого сообщения");
+                }
+
+                await _messageService.MarkMessagesAsRead(int.Parse(userId), message.SenderId);
+                
+                var allMessages = await _messageService.GetChatMessages(int.Parse(userId), message.SenderId);
+                var recipientGroups = new[] { userId, message.SenderId.ToString() };
+                
+                foreach (var msg in allMessages.Where(m => m.Sender.Id == message.SenderId))
+                {
+                    await Clients.Groups(recipientGroups).SendAsync("ReceiveMessageStatusUpdate", msg.Id, true);
+                }
+
+                await Clients.Groups(recipientGroups).SendAsync("UpdateChatList");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при обновлении статуса сообщения");
+                throw;
             }
         }
 

@@ -8,5 +8,6 @@ namespace backend.Hubs.Interfaces
         Task LeaveChat(string userId);
         Task SendTypingStatus(string receiverId, bool isTyping);
         Task SendMessage(Message message);
+        Task UpdateMessageStatus(int messageId, bool isRead);
     }
 } 
