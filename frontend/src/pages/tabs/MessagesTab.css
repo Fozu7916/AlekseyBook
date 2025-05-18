@@ -162,9 +162,11 @@
 
 .message-content {
   padding: 10px 16px;
+  padding-right: 28px;
   border-radius: 8px;
   color: #dcddde;
   word-wrap: break-word;
+  position: relative;
 }
 
 .message.sent .message-content {
@@ -179,6 +181,20 @@
   font-size: 11px;
   color: #72767d;
   align-self: flex-end;
+}
+
+/* Добавляем стили для статуса сообщения */
+.message-status {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message.sent .message-status svg {
+  margin-left: 4px;
 }
 
 .message-input {

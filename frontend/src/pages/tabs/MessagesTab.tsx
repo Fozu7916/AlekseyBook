@@ -7,6 +7,7 @@ import { userService, User, Message, ChatPreview } from '../../services/userServ
 import { chatService } from '../../services/chatService';
 import { logger } from '../../services/loggerService';
 import { getMediaUrl } from '../../config/api.config';
+import MessageStatus from '../../components/MessageStatus';
 
 const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -507,7 +508,12 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
                   key={message.id}
                   className={`message ${message.sender.id === selectedChat.id ? 'received' : 'sent'}`}
                 >
-                  <div className="message-content">{message.content}</div>
+                  <div className="message-content">
+                    {message.content}
+                    {message.sender.id !== selectedChat.id && (
+                      <MessageStatus isRead={message.isRead} />
+                    )}
+                  </div>
                   <div className="message-time">
                     {formatMessageTime(message.createdAt)}
                   </div>

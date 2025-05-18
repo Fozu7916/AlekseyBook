@@ -156,22 +156,32 @@ export class ChatService {
   private setupHandlers() {
     if (!this.connection) return;
 
-    this.connection.on('ReceiveTypingStatus', (userId: string, isTyping: boolean) => {
-      this.typingCallbacks.forEach(callback => {
-        try {
-          callback(userId, isTyping);
-        } catch (err) {
-          logger.error('Ошибка в обработчике статуса печатания', err);
-        }
-      });
-    });
-
     this.connection.on('ReceiveMessage', (message: Message) => {
       this.messageCallbacks.forEach(callback => {
         try {
           callback(message);
         } catch (err) {
-          logger.error('Ошибка в обработчике сообщений', err);
+          logger.error('Ошибка в обработчике сообщения:', err);
+        }
+      });
+    });
+
+    this.connection.on('TypingStatus', (userId: string, isTyping: boolean) => {
+      this.typingCallbacks.forEach(callback => {
+        try {
+          callback(userId, isTyping);
+        } catch (err) {
+          logger.error('Ошибка в обработчике статуса печатания:', err);
+        }
+      });
+    });
+
+    this.connection.on('MessageStatusUpdate', (messageId: number, isRead: boolean) => {
+      this.messageCallbacks.forEach(callback => {
+        try {
+          callback({ id: messageId, isRead } as Message);
+        } catch (err) {
+          logger.error('Ошибка в обработчике статуса сообщения:', err);
         }
       });
     });
