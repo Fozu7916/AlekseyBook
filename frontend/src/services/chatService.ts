@@ -5,24 +5,10 @@ import * as signalR from '@microsoft/signalr';
 import { logger } from './loggerService';
 import { API_CONFIG } from '../config/api.config';
 
-export interface ChatService {
-  startConnection(): Promise<void>;
-  stopConnection(): Promise<void>;
-  isConnected(): boolean;
-  onMessage(callback: (message: Message) => void): () => void;
-  onTypingStatus(callback: (userId: string, isTyping: boolean) => void): () => void;
-  onMessageStatusUpdate(callback: (messageId: number, isRead: boolean) => void): () => void;
-  onUpdateChatList(callback: () => void): () => void;
-  sendTypingStatus(userId: string, isTyping: boolean): Promise<void>;
-  sendMessageStatusUpdate(messageId: number, isRead: boolean): Promise<void>;
-}
-
 export class ChatService {
   private connection: HubConnection | null = null;
   private typingCallbacks: ((userId: string, isTyping: boolean) => void)[] = [];
   private messageCallbacks: ((message: Message) => void)[] = [];
-  private messageStatusCallbacks: ((messageId: number, isRead: boolean) => void)[] = [];
-  private updateChatListCallbacks: (() => void)[] = [];
   private connectionPromise: Promise<void> | null = null;
   private isConnecting: boolean = false;
   private shouldStop: boolean = false;
@@ -190,26 +176,6 @@ export class ChatService {
       });
     });
 
-    this.connection.on('ReceiveMessageStatusUpdate', (messageId: number, isRead: boolean) => {
-      this.messageStatusCallbacks.forEach(callback => {
-        try {
-          callback(messageId, isRead);
-        } catch (err) {
-          logger.error('Ошибка в обработчике статуса сообщения', err);
-        }
-      });
-    });
-
-    this.connection.on('UpdateChatList', () => {
-      this.updateChatListCallbacks.forEach(callback => {
-        try {
-          callback();
-        } catch (err) {
-          logger.error('Ошибка в обработчике обновления списка чатов', err);
-        }
-      });
-    });
-
     this.connection.onreconnecting(() => {});
 
     this.connection.onreconnected(async () => {
@@ -254,37 +220,6 @@ export class ChatService {
     } catch (err) {
       logger.error('Ошибка при отправке статуса печатания', err);
     }
-  }
-
-  public onMessageStatusUpdate(callback: (messageId: number, isRead: boolean) => void): () => void {
-    this.messageStatusCallbacks.push(callback);
-    return () => {
-      this.messageStatusCallbacks = this.messageStatusCallbacks.filter(cb => cb !== callback);
-    };
-  }
-
-  public async sendMessageStatusUpdate(messageId: number, isRead: boolean): Promise<void> {
-    if (!this.connection || this.connection.state !== 'Connected') {
-      await this.startConnection();
-    }
-
-    if (!this.connection || this.connection.state !== 'Connected') {
-      throw new Error('Не удалось установить соединение');
-    }
-
-    try {
-      await this.connection.invoke('UpdateMessageStatus', messageId, isRead);
-    } catch (err) {
-      logger.error('Ошибка при отправке обновления статуса сообщения', err);
-      throw err;
-    }
-  }
-
-  public onUpdateChatList(callback: () => void): () => void {
-    this.updateChatListCallbacks.push(callback);
-    return () => {
-      this.updateChatListCallbacks = this.updateChatListCallbacks.filter(cb => cb !== callback);
-    };
   }
 }
 

@@ -7,7 +7,6 @@ import { userService, User, Message, ChatPreview } from '../../services/userServ
 import { chatService } from '../../services/chatService';
 import { logger } from '../../services/loggerService';
 import { getMediaUrl } from '../../config/api.config';
-import MessageStatus from '../../components/MessageStatus';
 
 const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   const [chats, setChats] = useState<ChatPreview[]>([]);
@@ -71,32 +70,14 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
   const markMessagesAsRead = useCallback(async (userId: number) => {
     try {
-      const unreadMessages = messages.filter(m => 
-        m.sender.id === userId && !m.isRead
-      );
-
-      setMessages(prev => prev.map(m => 
-        m.sender.id === userId ? { ...m, isRead: true } : m
-      ));
-
       await userService.markMessagesAsRead(userId);
-
-      if (chatService.isConnected()) {
-        for (const message of unreadMessages) {
-          await chatService.sendMessageStatusUpdate(message.id, true);
-        }
-      }
-
       if (loadChatsRef.current) {
-        loadChatsRef.current(true);
+        loadChatsRef.current(false);
       }
     } catch (err) {
       logger.error('Ошибка при отметке сообщений как прочитанных', err);
-      setMessages(prev => prev.map(m => 
-        m.sender.id === userId && m.isRead ? { ...m, isRead: false } : m
-      ));
     }
-  }, [messages]);
+  }, []);
 
   const loadMessages = useCallback(async (userId: number, reset: boolean = false) => {
     try {
@@ -289,23 +270,27 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
 
     const wasTyping = isTyping;
     if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-        setIsTyping(false);
+      clearTimeout(typingTimeoutRef.current);
+      setIsTyping(false);
     }
 
     const messageContent = newMessage.trim();
     setNewMessage('');
 
     try {
-        // Отправляем сообщение через REST API
-        await userService.sendMessage(selectedChat.id, messageContent);
+      const currentUser = await userService.getCurrentUser();
+      if (!currentUser) throw new Error('Пользователь не авторизован');
 
-        if (wasTyping && chatService.isConnected()) {
-            await chatService.sendTypingStatus(selectedChat.id.toString(), false);
-        }
+      await userService.sendMessage(selectedChat.id, messageContent);
+      
+      setTimeout(scrollToBottom, 100);
+
+      if (wasTyping && chatService.isConnected()) {
+        await chatService.sendTypingStatus(selectedChat.id.toString(), false);
+      }
     } catch (error) {
-        logger.error('Ошибка при отправке сообщения:', error);
-        setNewMessage(messageContent);
+      logger.error('Ошибка при отправке сообщения:', error);
+      setNewMessage(messageContent);
     }
   };
 
@@ -346,77 +331,57 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
   };
 
   useEffect(() => {
-    if (selectedChat) {
-        markMessagesAsRead(selectedChat.id);
+    if (!isActive || !chatService.isConnected()) {
+      return;
     }
-  }, [selectedChat, markMessagesAsRead]);
+    
+    const unsubscribeMessage = chatService.onMessage((message) => {
+      const normalizedMessage = {
+        ...message,
+        createdAt: new Date(new Date(message.createdAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
+      };
 
-  useEffect(() => {
-    if (!isActive) return;
-
-    const setupSubscriptions = async () => {
-        try {
-            if (!chatService.isConnected()) {
-                await chatService.startConnection();
-            }
-            
-            const unsubscribeMessage = chatService.onMessage((message) => {
-                const normalizedMessage = {
-                    ...message,
-                    createdAt: new Date(new Date(message.createdAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString()
-                };
-
-                if (selectedChat && 
-                    (message.sender.id === selectedChat.id || message.receiver.id === selectedChat.id)) {
-                    
-                    setMessages(prev => {
-                        if (!prev.some(m => m.id === message.id)) {
-                            if (message.sender.id === selectedChat.id) {
-                                markMessagesAsRead(selectedChat.id);
-                            }
-                            
-                            setTimeout(scrollToBottom, 100);
-                            return [...prev, normalizedMessage];
-                        }
-                        return prev;
-                    });
-
-                    if (loadChatsRef.current) {
-                        loadChatsRef.current(true);
-                    }
-                }
-            });
-
-            const unsubscribeStatus = chatService.onMessageStatusUpdate((messageId, isRead) => {
-                setMessages(prev => {
-                    const updatedMessages = prev.map(m => {
-                        if (m.id === messageId) {
-                            return { ...m, isRead };
-                        }
-                        return m;
-                    });
-                    return updatedMessages;
-                });
-            });
-
-            const unsubscribeUpdateChatList = chatService.onUpdateChatList(() => {
-                if (loadChatsRef.current) {
-                    loadChatsRef.current(true);
-                }
-            });
-
-            return () => {
-                unsubscribeMessage();
-                unsubscribeStatus();
-                unsubscribeUpdateChatList();
-            };
-        } catch (err) {
-            logger.error('Ошибка при установке подписок', err);
+      setMessages(prev => {
+        if (prev.some(m => m.id === message.id)) {
+          return prev;
         }
-    };
 
-    setupSubscriptions();
-}, [isActive, selectedChat, markMessagesAsRead]);
+        if (selectedChat && 
+            (message.sender.id === selectedChat.id || 
+             message.receiver.id === selectedChat.id)) {
+          
+          if (loadChatsRef.current) {
+            loadChatsRef.current(true);
+          }
+          
+          if (message.sender.id === selectedChat.id) {
+            markMessagesAsRead(selectedChat.id);
+          }
+          
+          setTimeout(scrollToBottom, 100);
+          return [...prev, normalizedMessage];
+        }
+        
+        return prev;
+      });
+    });
+
+    const unsubscribeTyping = chatService.onTypingStatus((userId, isTyping) => {
+      if (selectedChat && userId === selectedChat.id.toString()) {
+        setTypingUsers(prev => {
+          if (prev[userId] === isTyping) {
+            return prev;
+          }
+          return { ...prev, [userId]: isTyping };
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeMessage();
+      unsubscribeTyping();
+    };
+  }, [isActive, selectedChat, markMessagesAsRead]);
 
   const isConnected = chatService.isConnected();
 
@@ -468,23 +433,6 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     }
     
     return selectedChat.status || 'Нет статуса';
-  };
-
-  const renderMessage = (message: Message) => {
-    const isReceived = message.sender.id === selectedChat?.id;
-    const messageTime = formatMessageTime(message.createdAt);
-
-    return (
-        <div key={message.id} className={`message ${isReceived ? 'received' : 'sent'}`}>
-            <div className="message-content">
-                {message.content}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '4px' }}>
-                    <span className="message-time">{messageTime}</span>
-                    {!isReceived && <MessageStatus isRead={message.isRead} />}
-                </div>
-            </div>
-        </div>
-    );
   };
 
   if (!isActive) return null;
@@ -554,7 +502,17 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
                   Загрузка сообщений...
                 </div>
               )}
-              {messages.map(renderMessage)}
+              {messages.map(message => (
+                <div
+                  key={message.id}
+                  className={`message ${message.sender.id === selectedChat.id ? 'received' : 'sent'}`}
+                >
+                  <div className="message-content">{message.content}</div>
+                  <div className="message-time">
+                    {formatMessageTime(message.createdAt)}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <form className="message-input" onSubmit={handleSendMessage}>
