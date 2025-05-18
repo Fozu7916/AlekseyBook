@@ -173,8 +173,6 @@ namespace backend.Services
         public async Task MarkMessagesAsRead(int userId, int otherUserId)
         {
             var unreadMessages = await _context.Messages
-                .Include(m => m.Sender)
-                .Include(m => m.Receiver)
                 .Where(m => 
                     m.SenderId == otherUserId && 
                     m.ReceiverId == userId && 
@@ -193,14 +191,6 @@ namespace backend.Services
         {
             return await _context.Messages
                 .CountAsync(m => m.ReceiverId == userId && m.Status == MessageStatus.Sent);
-        }
-
-        public async Task<Message?> GetMessageById(int messageId)
-        {
-            return await _context.Messages
-                .Include(m => m.Sender)
-                .Include(m => m.Receiver)
-                .FirstOrDefaultAsync(m => m.Id == messageId);
         }
 
         private MessageDto MapToMessageDto(Message message)

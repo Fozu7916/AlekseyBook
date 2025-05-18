@@ -1,4 +1,3 @@
-using backend.Models;
 using backend.Models.DTOs;
 
 namespace backend.Services.Interfaces
@@ -10,6 +9,5 @@ namespace backend.Services.Interfaces
         Task<List<ChatPreviewDto>> GetUserChats(int userId);
         Task MarkMessagesAsRead(int userId, int otherUserId);
         Task<int> GetUnreadMessagesCount(int userId);
-        Task<Message?> GetMessageById(int messageId);
     }
 } 
