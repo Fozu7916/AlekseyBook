@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using backend.Services;
 using backend.Models.DTOs;
 using System.Security.Claims;
+using backend.Services.Interfaces;
 
 namespace backend.Controllers
 {

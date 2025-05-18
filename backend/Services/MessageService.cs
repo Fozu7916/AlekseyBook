@@ -6,18 +6,10 @@ using backend.Data;
 using backend.Models;
 using backend.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
+using backend.Services.Interfaces;
 
 namespace backend.Services
 {
-    public interface IMessageService
-    {
-        Task<MessageDto> SendMessage(int senderId, SendMessageDto messageDto);
-        Task<List<MessageDto>> GetChatMessages(int userId, int otherUserId);
-        Task<List<ChatPreviewDto>> GetUserChats(int userId);
-        Task MarkMessagesAsRead(int userId, int otherUserId);
-        Task<int> GetUnreadMessagesCount(int userId);
-    }
-
     public class MessageService : IMessageService
     {
         private readonly ApplicationDbContext _context;

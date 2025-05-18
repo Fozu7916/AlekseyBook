@@ -9,6 +9,7 @@ using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using backend.Services.Interfaces;
 
 namespace backend.Controllers
 {

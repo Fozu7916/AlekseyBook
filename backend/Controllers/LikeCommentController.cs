@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using backend.Services;
 using backend.Models.DTOs;
 using System.Security.Claims;
+using backend.Services.Interfaces;
 
 namespace backend.Controllers
 {
@@ -27,9 +28,10 @@ namespace backend.Controllers
         }
 
         [HttpGet("posts/{postId}/likes")]
-        public async Task<List<LikeDto>> GetPostLikes(int postId)
+        public async Task<ActionResult<List<LikeDto>>> GetPostLikes(int postId)
         {
-            return await _likeCommentService.GetPostLikesAsync(postId);
+            var likes = await _likeCommentService.GetPostLikesAsync(postId);
+            return Ok(likes);
         }
 
         [HttpPost("posts/{postId}/likes")]
@@ -47,30 +49,34 @@ namespace backend.Controllers
         }
 
         [HttpGet("posts/{postId}/comments")]
-        public async Task<List<CommentDto>> GetPostComments(int postId)
+        public async Task<ActionResult<List<CommentDto>>> GetPostComments(int postId)
         {
-            return await _likeCommentService.GetPostCommentsAsync(postId);
+            var comments = await _likeCommentService.GetPostCommentsAsync(postId);
+            return Ok(comments);
         }
 
         [HttpPost("posts/{postId}/comments")]
         public async Task<ActionResult<CommentDto>> CreateReplyComment(int postId, [FromBody] CreateCommentDto dto)
         {
             var userId = GetCurrentUserId();
-            return await _likeCommentService.CreateCommentAsync(dto, userId);
+            var comment = await _likeCommentService.CreateCommentAsync(dto, userId);
+            return Ok(comment);
         }
 
         [HttpPut("comments/{commentId}")]
-        public async Task<CommentDto> UpdateComment(int commentId, UpdateCommentDto dto)
+        public async Task<ActionResult<CommentDto>> UpdateComment(int commentId, UpdateCommentDto dto)
         {
             var userId = GetCurrentUserId();
-            return await _likeCommentService.UpdateCommentAsync(commentId, dto, userId);
+            var comment = await _likeCommentService.UpdateCommentAsync(commentId, dto, userId);
+            return Ok(comment);
         }
 
         [HttpDelete("comments/{commentId}")]
-        public async Task DeleteComment(int commentId)
+        public async Task<ActionResult> DeleteComment(int commentId)
         {
             var userId = GetCurrentUserId();
             await _likeCommentService.DeleteCommentAsync(commentId, userId);
+            return NoContent();
         }
     }
 } 

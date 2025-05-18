@@ -1,6 +1,6 @@
 using backend.Models.DTOs;
 
-namespace backend.Services
+namespace backend.Services.Interfaces
 {
     public interface IWallPostService
     {

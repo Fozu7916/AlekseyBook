@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using backend.Services;
+using backend.Services.Interfaces;
 using backend.Models.DTOs;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;

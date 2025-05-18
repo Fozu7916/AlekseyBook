@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using backend.Services.Interfaces;
 
 namespace backend.UnitTests
 {

@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Text.Json;
+using backend.Services.Interfaces;
 
 namespace backend.UnitTests.Controllers
 {
@@ -71,9 +72,8 @@ namespace backend.UnitTests.Controllers
             var result = await _controller.CreateReplyComment(1, commentDto);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<CommentDto>>(result);
-            Assert.NotNull(actionResult.Value);
-            var returnValue = actionResult.Value;
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<CommentDto>(okResult.Value);
             Assert.Equal(commentDto.Content, returnValue.Content);
             Assert.Equal(userResponse.Id, returnValue.Author.Id);
             Assert.Equal(userResponse.Username, returnValue.Author.Username);
@@ -176,10 +176,12 @@ namespace backend.UnitTests.Controllers
             var result = await _controller.GetPostComments(1);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Count);
-            Assert.Equal("Comment 1", result[0].Content);
-            Assert.Equal("Comment 2", result[1].Content);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<List<CommentDto>>(okResult.Value);
+            Assert.NotNull(returnValue);
+            Assert.Equal(2, returnValue.Count);
+            Assert.Equal("Comment 1", returnValue[0].Content);
+            Assert.Equal("Comment 2", returnValue[1].Content);
         }
 
         [Fact]
@@ -225,10 +227,12 @@ namespace backend.UnitTests.Controllers
             var result = await _controller.GetPostLikes(1);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(2, result.Count);
-            Assert.Equal(1, result[0].User.Id);
-            Assert.Equal(2, result[1].User.Id);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<List<LikeDto>>(okResult.Value);
+            Assert.NotNull(returnValue);
+            Assert.Equal(2, returnValue.Count);
+            Assert.Equal(1, returnValue[0].User.Id);
+            Assert.Equal(2, returnValue[1].User.Id);
         }
     }
 } 

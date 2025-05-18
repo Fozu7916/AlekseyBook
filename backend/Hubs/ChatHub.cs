@@ -2,10 +2,11 @@ using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using backend.Models;
 using Microsoft.Extensions.Logging;
+using backend.Hubs.Interfaces;
 
 namespace backend.Hubs
 {
-    public class ChatHub : Hub
+    public class ChatHub : Hub, IChatHub
     {
         private static readonly Dictionary<string, string> UserConnections = new();
         private readonly ILogger<ChatHub> _logger;
@@ -53,7 +54,7 @@ namespace backend.Hubs
             }
             else
             {
-                _logger.LogWarning("Попытка отправить статус набора текста от неизвестного пользователя. ConnectionId: {ConnectionId}", 
+                _logger.LogError("Попытка отправить статус набора текста от неавторизованного пользователя. ConnectionId: {ConnectionId}", 
                     Context.ConnectionId);
             }
         }
@@ -81,7 +82,7 @@ namespace backend.Hubs
             }
             else
             {
-                _logger.LogWarning("Попытка отправить сообщение от неизвестного пользователя. ConnectionId: {ConnectionId}", 
+                _logger.LogError("Попытка отправить сообщение от неавторизованного пользователя. ConnectionId: {ConnectionId}", 
                     Context.ConnectionId);
             }
         }

@@ -1,6 +1,7 @@
 using Xunit;
 using Moq;
 using backend.Services;
+using backend.Services.Interfaces;
 using backend.Models;
 using backend.Models.DTOs;
 using backend.Data;

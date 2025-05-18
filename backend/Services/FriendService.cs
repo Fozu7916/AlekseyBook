@@ -2,21 +2,10 @@ using backend.Data;
 using backend.Models;
 using backend.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
+using backend.Services.Interfaces;
 
 namespace backend.Services
 {
-    public interface IFriendService
-    {
-        Task<FriendResponseDto> SendFriendRequest(int userId, int friendId);
-        Task<FriendResponseDto> AcceptFriendRequest(int userId, int friendId);
-        Task<bool> DeclineFriendRequest(int userId, int friendId);
-        Task<bool> RemoveFriend(int userId, int friendId);
-        Task<bool> BlockUser(int userId, int blockedUserId);
-        Task<FriendListResponseDto> GetFriendsList(int userId);
-        Task<bool> IsFriend(int userId, int friendId);
-        Task<List<UserResponseDto>> GetUserFriendsList(int userId);
-    }
-
     public class FriendService : IFriendService
     {
         private readonly ApplicationDbContext _context;

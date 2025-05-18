@@ -3,6 +3,7 @@ using backend.Data;
 using backend.Models;
 using backend.Models.DTOs;
 using Microsoft.Extensions.Logging;
+using backend.Services.Interfaces;
 
 namespace backend.Services
 {

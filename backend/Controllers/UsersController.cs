@@ -3,6 +3,8 @@ using backend.Services;
 using backend.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
+using backend.Services.Interfaces;
+using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -27,7 +29,7 @@ namespace backend.Controllers
             {
                 return NotFound();
             }
-            return user;
+            return Ok(user);
         }
 
         [HttpGet("username/{username}")]
@@ -38,13 +40,14 @@ namespace backend.Controllers
             {
                 return NotFound();
             }
-            return user;
+            return Ok(user);
         }
 
         [HttpGet]
         public async Task<ActionResult<List<UserResponseDto>>> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            return await _userService.GetUsers(page, pageSize);
+            var users = await _userService.GetUsers(page, pageSize);
+            return Ok(users);
         }
 
         [HttpPost]
@@ -73,7 +76,7 @@ namespace backend.Controllers
                 {
                     return NotFound();
                 }
-                return user;
+                return Ok(user);
             }
             catch (Exception ex)
             {
@@ -105,7 +108,7 @@ namespace backend.Controllers
                 {
                     return NotFound();
                 }
-                return user;
+                return Ok(user);
             }
             catch (Exception ex)
             {

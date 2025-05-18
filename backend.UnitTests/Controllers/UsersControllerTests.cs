@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http;
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using backend.Services.Interfaces;
 
 namespace backend.UnitTests
 {
@@ -65,10 +66,10 @@ namespace backend.UnitTests
             var result = await _controller.GetUser(1);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            Assert.Equal(userResponse, actionResult.Value);
-            Assert.Equal(userResponse.Username, actionResult.Value?.Username);
-            Assert.Equal(userResponse.Email, actionResult.Value?.Email);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<UserResponseDto>(okResult.Value);
+            Assert.Equal(userResponse.Username, returnValue.Username);
+            Assert.Equal(userResponse.Email, returnValue.Email);
         }
 
         [Fact]
@@ -97,10 +98,10 @@ namespace backend.UnitTests
             var result = await _controller.UpdateUser(1, updateDto);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            Assert.Equal(userResponse, actionResult.Value);
-            Assert.Equal(updateDto.Status, actionResult.Value?.Status);
-            Assert.Equal(updateDto.Bio, actionResult.Value?.Bio);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<UserResponseDto>(okResult.Value);
+            Assert.Equal(updateDto.Status, returnValue.Status);
+            Assert.Equal(updateDto.Bio, returnValue.Bio);
         }
 
         [Fact]
@@ -120,10 +121,10 @@ namespace backend.UnitTests
             var result = await _controller.GetUsers(1, 10);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<List<UserResponseDto>>>(result);
-            Assert.Equal(users, actionResult.Value);
-            Assert.Equal(2, actionResult.Value?.Count);
-            Assert.All(actionResult.Value!, user => Assert.Contains("testuser", user.Username));
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<List<UserResponseDto>>(okResult.Value);
+            Assert.Equal(2, returnValue.Count);
+            Assert.All(returnValue, user => Assert.Contains("testuser", user.Username));
         }
 
         [Fact]
@@ -159,10 +160,10 @@ namespace backend.UnitTests
             var result = await _controller.GetUserByUsername("testuser");
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            Assert.Equal(userResponse, actionResult.Value);
-            Assert.Equal(userResponse.Username, actionResult.Value?.Username);
-            Assert.Equal(userResponse.Email, actionResult.Value?.Email);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<UserResponseDto>(okResult.Value);
+            Assert.Equal(userResponse.Username, returnValue.Username);
+            Assert.Equal(userResponse.Email, returnValue.Email);
         }
 
         [Fact]
@@ -209,10 +210,7 @@ namespace backend.UnitTests
             var result = await _controller.CreateUser(registerDto);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<AuthResponseDto>>(result);
-            Assert.NotNull(actionResult.Result);
-            var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
-            Assert.NotNull(okResult.Value);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returnValue = Assert.IsType<AuthResponseDto>(okResult.Value);
             Assert.NotNull(returnValue.User);
             Assert.NotNull(returnValue.Token);
@@ -238,14 +236,9 @@ namespace backend.UnitTests
             var result = await _controller.CreateUser(registerDto);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<AuthResponseDto>>(result);
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
-                .GetType()
-                .GetProperty("message")?
-                .GetValue(badRequestResult.Value)?
-                .ToString() ?? string.Empty;
-            Assert.Equal("Этот email уже зарегистрирован", errorMessage);
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+            var errorObject = new AnonymousObject(badRequestResult.Value!);
+            Assert.Equal("Этот email уже зарегистрирован", errorObject.GetPropertyValue<string>("message"));
         }
 
         [Fact]
@@ -280,30 +273,25 @@ namespace backend.UnitTests
         public async Task UpdateAvatar_ValidFile_ReturnsUpdatedUser()
         {
             // Arrange
-            var formFile = new Mock<IFormFile>();
-            formFile.Setup(f => f.Length).Returns(1024); // 1KB
-            formFile.Setup(f => f.ContentType).Returns("image/jpeg");
-
+            var fileMock = new Mock<IFormFile>();
             var userResponse = new UserResponseDto
             {
                 Id = 1,
                 Username = "testuser",
                 Email = "test@example.com",
                 Status = "Active",
-                AvatarUrl = "/uploads/avatars/testuser.jpg"
+                AvatarUrl = "http://example.com/avatar.jpg"
             };
 
-            _userServiceMock.Setup(x => x.UpdateAvatar(1, formFile.Object))
+            _userServiceMock.Setup(x => x.UpdateAvatar(1, fileMock.Object))
                 .ReturnsAsync(userResponse);
 
             // Act
-            var result = await _controller.UpdateAvatar(1, formFile.Object);
+            var result = await _controller.UpdateAvatar(1, fileMock.Object);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            Assert.NotNull(actionResult.Value);
-            var returnValue = actionResult.Value;
-            Assert.NotNull(returnValue.AvatarUrl);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnValue = Assert.IsType<UserResponseDto>(okResult.Value);
             Assert.Equal(userResponse.AvatarUrl, returnValue.AvatarUrl);
         }
 
@@ -311,44 +299,32 @@ namespace backend.UnitTests
         public async Task UpdateAvatar_NonExistingUser_ReturnsNotFound()
         {
             // Arrange
-            var formFile = new Mock<IFormFile>();
-            formFile.Setup(f => f.Length).Returns(1024); // 1KB
-            formFile.Setup(f => f.ContentType).Returns("image/jpeg");
-
-            _userServiceMock.Setup(x => x.UpdateAvatar(999, formFile.Object))
+            var fileMock = new Mock<IFormFile>();
+            _userServiceMock.Setup(x => x.UpdateAvatar(999, fileMock.Object))
                 .ReturnsAsync((UserResponseDto?)null);
 
             // Act
-            var result = await _controller.UpdateAvatar(999, formFile.Object);
+            var result = await _controller.UpdateAvatar(999, fileMock.Object);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            Assert.IsType<NotFoundResult>(actionResult.Result);
+            Assert.IsType<NotFoundResult>(result.Result);
         }
 
         [Fact]
         public async Task UpdateAvatar_InvalidFile_ReturnsBadRequest()
         {
             // Arrange
-            var formFile = new Mock<IFormFile>();
-            formFile.Setup(f => f.Length).Returns(1024 * 1024 * 11); // 11MB
-            formFile.Setup(f => f.ContentType).Returns("image/jpeg");
-
-            _userServiceMock.Setup(x => x.UpdateAvatar(1, formFile.Object))
-                .ThrowsAsync(new Exception("Размер файла превышает 10MB"));
+            var fileMock = new Mock<IFormFile>();
+            _userServiceMock.Setup(x => x.UpdateAvatar(1, fileMock.Object))
+                .ThrowsAsync(new Exception("Недопустимый формат файла"));
 
             // Act
-            var result = await _controller.UpdateAvatar(1, formFile.Object);
+            var result = await _controller.UpdateAvatar(1, fileMock.Object);
 
             // Assert
-            var actionResult = Assert.IsType<ActionResult<UserResponseDto>>(result);
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-            var errorMessage = Assert.IsType<JsonResult>(new JsonResult(badRequestResult.Value)).Value?
-                .GetType()
-                .GetProperty("message")?
-                .GetValue(badRequestResult.Value)?
-                .ToString() ?? string.Empty;
-            Assert.Equal("Размер файла превышает 10MB", errorMessage);
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+            var errorObject = new AnonymousObject(badRequestResult.Value!);
+            Assert.Equal("Недопустимый формат файла", errorObject.GetPropertyValue<string>("message"));
         }
 
         public void Dispose()

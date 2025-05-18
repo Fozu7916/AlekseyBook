@@ -4,11 +4,12 @@ using backend.Services;
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using backend.Hubs.Interfaces;
 
 namespace backend.Hubs
 {
     [Authorize]
-    public class OnlineStatusHub : Hub
+    public class OnlineStatusHub : Hub, IOnlineStatusHub
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OnlineStatusHub> _logger;
@@ -82,7 +83,6 @@ namespace backend.Hubs
                 {
                     _userConnections[userId].ConnectionStates.Remove(Context.ConnectionId);
 
-                    // Если это было последнее соединение пользователя
                     if (_userConnections[userId].ConnectionStates.Count == 0)
                     {
                         _userConnections.Remove(userId);
