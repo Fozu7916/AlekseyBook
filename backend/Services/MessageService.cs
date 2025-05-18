@@ -38,7 +38,7 @@ namespace backend.Services
                 ReceiverId = messageDto.ReceiverId,
                 Receiver = receiver,
                 Content = messageDto.Content,
-                IsRead = false,
+                Status = MessageStatus.Sent,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -49,7 +49,7 @@ namespace backend.Services
             {
                 Id = message.Id,
                 Content = message.Content,
-                IsRead = message.IsRead,
+                IsRead = message.Status == MessageStatus.Read,
                 CreatedAt = message.CreatedAt,
                 Sender = new UserResponseDto
                 {
@@ -114,7 +114,7 @@ namespace backend.Services
                 {
                     Id = m.Id,
                     Content = m.Content,
-                    IsRead = m.IsRead,
+                    IsRead = m.Status == MessageStatus.Read,
                     CreatedAt = m.CreatedAt,
                     Sender = users.GetValueOrDefault(m.SenderId) ?? throw new Exception($"Sender not found: {m.SenderId}"),
                     Receiver = users.GetValueOrDefault(m.ReceiverId) ?? throw new Exception($"Receiver not found: {m.ReceiverId}")
@@ -137,7 +137,7 @@ namespace backend.Services
                 {
                     OtherUserId = g.Key,
                     LastMessage = g.First(),
-                    UnreadCount = g.Count(x => !x.IsRead && x.ReceiverId == userId)
+                    UnreadCount = g.Count(x => x.Status == MessageStatus.Sent && x.ReceiverId == userId)
                 })
                 .ToList();
 
@@ -176,12 +176,12 @@ namespace backend.Services
                 .Where(m => 
                     m.SenderId == otherUserId && 
                     m.ReceiverId == userId && 
-                    !m.IsRead)
+                    m.Status == MessageStatus.Sent)
                 .ToListAsync();
 
             foreach (var message in unreadMessages)
             {
-                message.IsRead = true;
+                message.Status = MessageStatus.Read;
             }
 
             await _context.SaveChangesAsync();
@@ -190,7 +190,7 @@ namespace backend.Services
         public async Task<int> GetUnreadMessagesCount(int userId)
         {
             return await _context.Messages
-                .CountAsync(m => m.ReceiverId == userId && !m.IsRead);
+                .CountAsync(m => m.ReceiverId == userId && m.Status == MessageStatus.Sent);
         }
 
         private MessageDto MapToMessageDto(Message message)
@@ -223,7 +223,7 @@ namespace backend.Services
                     Bio = message.Receiver.Bio
                 },
                 Content = message.Content,
-                IsRead = message.IsRead,
+                IsRead = message.Status == MessageStatus.Read,
                 CreatedAt = message.CreatedAt
             };
         }

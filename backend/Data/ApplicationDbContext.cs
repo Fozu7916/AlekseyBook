@@ -82,7 +82,7 @@ namespace backend.Data
                 entity.Property(e => e.SenderId).HasColumnName("sender_id");
                 entity.Property(e => e.ReceiverId).HasColumnName("receiver_id");
                 entity.Property(e => e.Content).HasColumnName("content");
-                entity.Property(e => e.IsRead).HasColumnName("is_read");
+                entity.Property(e => e.Status).HasColumnName("status");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at");
 
                 entity.HasOne(m => m.Sender)

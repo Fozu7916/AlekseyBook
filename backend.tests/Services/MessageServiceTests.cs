@@ -93,6 +93,7 @@ namespace backend.UnitTests
                 Assert.Equal(messageDto.Content, savedMessage.Content);
                 Assert.Equal(sender.Id, savedMessage.SenderId);
                 Assert.Equal(receiver.Id, savedMessage.ReceiverId);
+                Assert.Equal(MessageStatus.Sent, savedMessage.Status);
             }
         }
 
@@ -158,7 +159,7 @@ namespace backend.UnitTests
                     ReceiverId = receiver.Id,
                     Receiver = receiver,
                     Content = "Message 1",
-                    IsRead = true,
+                    Status = MessageStatus.Read,
                     CreatedAt = DateTime.UtcNow
                 },
                 new Message
@@ -168,7 +169,7 @@ namespace backend.UnitTests
                     ReceiverId = sender.Id,
                     Receiver = sender,
                     Content = "Message 2",
-                    IsRead = false,
+                    Status = MessageStatus.Sent,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -181,8 +182,8 @@ namespace backend.UnitTests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
-            Assert.Contains(result, m => m.Content == "Message 1");
-            Assert.Contains(result, m => m.Content == "Message 2");
+            Assert.Contains(result, m => m.Content == "Message 1" && m.IsRead);
+            Assert.Contains(result, m => m.Content == "Message 2" && !m.IsRead);
         }
 
         [Fact]
@@ -220,7 +221,7 @@ namespace backend.UnitTests
                     ReceiverId = receiver.Id,
                     Receiver = receiver,
                     Content = "Message 1",
-                    IsRead = false,
+                    Status = MessageStatus.Sent,
                     CreatedAt = DateTime.UtcNow
                 },
                 new Message
@@ -230,7 +231,7 @@ namespace backend.UnitTests
                     ReceiverId = receiver.Id,
                     Receiver = receiver,
                     Content = "Message 2",
-                    IsRead = false,
+                    Status = MessageStatus.Sent,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -242,13 +243,18 @@ namespace backend.UnitTests
 
             // Assert
             var unreadMessages = await _context.Messages
-                .Where(m => m.SenderId == sender.Id && m.ReceiverId == receiver.Id && !m.IsRead)
+                .Where(m => m.SenderId == sender.Id && m.ReceiverId == receiver.Id && m.Status == MessageStatus.Sent)
                 .CountAsync();
             Assert.Equal(0, unreadMessages);
+
+            var readMessages = await _context.Messages
+                .Where(m => m.SenderId == sender.Id && m.ReceiverId == receiver.Id && m.Status == MessageStatus.Read)
+                .CountAsync();
+            Assert.Equal(2, readMessages);
         }
 
         [Fact]
-        public async Task GetUnreadMessagesCount_ReturnsCount()
+        public async Task GetUnreadMessagesCount_ReturnsCorrectCount()
         {
             // Arrange
             var sender = new User
@@ -282,7 +288,7 @@ namespace backend.UnitTests
                     ReceiverId = receiver.Id,
                     Receiver = receiver,
                     Content = "Message 1",
-                    IsRead = false,
+                    Status = MessageStatus.Sent,
                     CreatedAt = DateTime.UtcNow
                 },
                 new Message
@@ -292,7 +298,7 @@ namespace backend.UnitTests
                     ReceiverId = receiver.Id,
                     Receiver = receiver,
                     Content = "Message 2",
-                    IsRead = false,
+                    Status = MessageStatus.Read,
                     CreatedAt = DateTime.UtcNow
                 },
                 new Message
@@ -302,7 +308,7 @@ namespace backend.UnitTests
                     ReceiverId = receiver.Id,
                     Receiver = receiver,
                     Content = "Message 3",
-                    IsRead = true,
+                    Status = MessageStatus.Sent,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -314,6 +320,227 @@ namespace backend.UnitTests
 
             // Assert
             Assert.Equal(2, result);
+        }
+
+        [Fact]
+        public async Task MarkMessagesAsRead_OnlyMarksTargetUserMessages()
+        {
+            // Arrange
+            var sender = new User
+            {
+                Username = "sender",
+                Email = "sender@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(sender);
+
+            var receiver1 = new User
+            {
+                Username = "receiver1",
+                Email = "receiver1@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(receiver1);
+
+            var receiver2 = new User
+            {
+                Username = "receiver2",
+                Email = "receiver2@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(receiver2);
+
+            var messages = new List<Message>
+            {
+                // Сообщения для receiver1
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver1.Id,
+                    Receiver = receiver1,
+                    Content = "Message 1",
+                    Status = MessageStatus.Sent,
+                    CreatedAt = DateTime.UtcNow
+                },
+                // Сообщения для receiver2
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver2.Id,
+                    Receiver = receiver2,
+                    Content = "Message 2",
+                    Status = MessageStatus.Sent,
+                    CreatedAt = DateTime.UtcNow
+                }
+            };
+            await _context.Messages.AddRangeAsync(messages);
+            await _context.SaveChangesAsync();
+
+            // Act
+            await _messageService.MarkMessagesAsRead(receiver1.Id, sender.Id);
+
+            // Assert
+            // Проверяем, что сообщения для receiver1 помечены как прочитанные
+            var receiver1Messages = await _context.Messages
+                .Where(m => m.ReceiverId == receiver1.Id)
+                .ToListAsync();
+            Assert.All(receiver1Messages, m => Assert.Equal(MessageStatus.Read, m.Status));
+
+            // Проверяем, что сообщения для receiver2 остались непрочитанными
+            var receiver2Messages = await _context.Messages
+                .Where(m => m.ReceiverId == receiver2.Id)
+                .ToListAsync();
+            Assert.All(receiver2Messages, m => Assert.Equal(MessageStatus.Sent, m.Status));
+        }
+
+        [Fact]
+        public async Task GetChatMessages_CorrectlyMapsMessageStatus()
+        {
+            // Arrange
+            var sender = new User
+            {
+                Username = "sender",
+                Email = "sender@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(sender);
+
+            var receiver = new User
+            {
+                Username = "receiver",
+                Email = "receiver@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(receiver);
+
+            var messages = new List<Message>
+            {
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver.Id,
+                    Receiver = receiver,
+                    Content = "Sent Message",
+                    Status = MessageStatus.Sent,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-2)
+                },
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver.Id,
+                    Receiver = receiver,
+                    Content = "Read Message",
+                    Status = MessageStatus.Read,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-1)
+                }
+            };
+            await _context.Messages.AddRangeAsync(messages);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _messageService.GetChatMessages(sender.Id, receiver.Id);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(2, result.Count);
+
+            var sentMessage = result.First(m => m.Content == "Sent Message");
+            var readMessage = result.First(m => m.Content == "Read Message");
+
+            Assert.False(sentMessage.IsRead);
+            Assert.True(readMessage.IsRead);
+        }
+
+        [Fact]
+        public async Task GetUserChats_CorrectlyCountsUnreadMessages()
+        {
+            // Arrange
+            var sender = new User
+            {
+                Username = "sender",
+                Email = "sender@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(sender);
+
+            var receiver = new User
+            {
+                Username = "receiver",
+                Email = "receiver@example.com",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                LastLogin = DateTime.UtcNow,
+                Status = "Active"
+            };
+            await _context.Users.AddAsync(receiver);
+
+            var messages = new List<Message>
+            {
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver.Id,
+                    Receiver = receiver,
+                    Content = "Message 1",
+                    Status = MessageStatus.Sent,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-3)
+                },
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver.Id,
+                    Receiver = receiver,
+                    Content = "Message 2",
+                    Status = MessageStatus.Read,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-2)
+                },
+                new Message
+                {
+                    SenderId = sender.Id,
+                    Sender = sender,
+                    ReceiverId = receiver.Id,
+                    Receiver = receiver,
+                    Content = "Message 3",
+                    Status = MessageStatus.Sent,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-1)
+                }
+            };
+            await _context.Messages.AddRangeAsync(messages);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _messageService.GetUserChats(receiver.Id);
+
+            // Assert
+            Assert.Single(result);
+            var chat = result.First();
+            Assert.Equal(2, chat.UnreadCount);
+            Assert.Equal("Message 3", chat.LastMessage.Content);
+            Assert.False(chat.LastMessage.IsRead);
         }
 
         public void Dispose()

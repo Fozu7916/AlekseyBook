@@ -4,12 +4,19 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
 {
+    public enum MessageStatus
+    {
+        Sent = 0,
+        Read = 1
+    }
+
     [Table("messages")]
     public class Message
     {
         public Message()
         {
             CreatedAt = DateTime.UtcNow;
+            Status = MessageStatus.Sent;
         }
 
         [Key]
@@ -24,7 +31,7 @@ namespace backend.Models
         [Required]
         public required string Content { get; set; }
         
-        public bool IsRead { get; set; }
+        public MessageStatus Status { get; set; }
         
         public DateTime CreatedAt { get; set; }
         
