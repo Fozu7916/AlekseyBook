@@ -23,11 +23,13 @@ namespace backend.Services
 
         public async Task<MessageDto> SendMessage(int senderId, SendMessageDto messageDto)
         {
-            var sender = await _context.Users.FindAsync(senderId)
-                ?? throw new Exception("Отправитель не найден");
+            var sender = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == senderId)
+                ?? throw new InvalidOperationException("Отправитель не найден");
             
-            var receiver = await _context.Users.FindAsync(messageDto.ReceiverId)
-                ?? throw new Exception("Получатель не найден");
+            var receiver = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == messageDto.ReceiverId)
+                ?? throw new InvalidOperationException("Получатель не найден");
 
             var message = new Message
             {
@@ -122,19 +124,24 @@ namespace backend.Services
 
         public async Task<List<ChatPreviewDto>> GetUserChats(int userId)
         {
-            var query = from m in _context.Messages
-                        where m.SenderId == userId || m.ReceiverId == userId
-                        group m by m.SenderId == userId ? m.ReceiverId : m.SenderId into g
-                        select new
-                        {
-                            OtherUserId = g.Key,
-                            LastMessage = g.OrderByDescending(x => x.CreatedAt).First(),
-                            UnreadCount = g.Count(x => !x.IsRead && x.ReceiverId == userId)
-                        };
+            var messages = await _context.Messages
+                .Include(m => m.Sender)
+                .Include(m => m.Receiver)
+                .Where(m => m.SenderId == userId || m.ReceiverId == userId)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
 
-            var results = await query.ToListAsync();
-            
-            var otherUserIds = results.Select(x => x.OtherUserId).ToList();
+            var chatGroups = messages
+                .GroupBy(m => m.SenderId == userId ? m.ReceiverId : m.SenderId)
+                .Select(g => new
+                {
+                    OtherUserId = g.Key,
+                    LastMessage = g.First(),
+                    UnreadCount = g.Count(x => !x.IsRead && x.ReceiverId == userId)
+                })
+                .ToList();
+
+            var otherUserIds = chatGroups.Select(x => x.OtherUserId).ToList();
             var users = await _context.Users
                 .Where(u => otherUserIds.Contains(u.Id))
                 .Select(u => new UserResponseDto
@@ -151,23 +158,12 @@ namespace backend.Services
                 })
                 .ToDictionaryAsync(u => u.Id);
 
-            return results
-                .Where(chat => 
-                    users.ContainsKey(chat.OtherUserId) && 
-                    users.ContainsKey(chat.LastMessage.SenderId) && 
-                    users.ContainsKey(chat.LastMessage.ReceiverId))
+            return chatGroups
+                .Where(chat => users.ContainsKey(chat.OtherUserId))
                 .Select(chat => new ChatPreviewDto
                 {
                     User = users[chat.OtherUserId],
-                    LastMessage = new MessageDto
-                    {
-                        Id = chat.LastMessage.Id,
-                        Content = chat.LastMessage.Content,
-                        IsRead = chat.LastMessage.IsRead,
-                        CreatedAt = chat.LastMessage.CreatedAt,
-                        Sender = users[chat.LastMessage.SenderId],
-                        Receiver = users[chat.LastMessage.ReceiverId]
-                    },
+                    LastMessage = MapToMessageDto(chat.LastMessage),
                     UnreadCount = chat.UnreadCount
                 })
                 .OrderByDescending(c => c.LastMessage.CreatedAt)

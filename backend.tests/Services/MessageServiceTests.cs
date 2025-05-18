@@ -6,6 +6,9 @@ using backend.Models;
 using backend.Models.DTOs;
 using backend.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
+using System.Collections;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace backend.UnitTests
 {
@@ -31,26 +34,27 @@ namespace backend.UnitTests
             // Arrange
             var sender = new User
             {
+                Id = 1,
                 Username = "sender",
                 Email = "sender@example.com",
                 PasswordHash = "hashedpassword",
                 CreatedAt = DateTime.UtcNow,
                 LastLogin = DateTime.UtcNow,
-                Status = "Active"
+                Status = "Active",
+                AvatarUrl = "/uploads/avatar1.jpg"
             };
-            await _context.Users.AddAsync(sender);
 
             var receiver = new User
             {
+                Id = 2,
                 Username = "receiver",
                 Email = "receiver@example.com",
                 PasswordHash = "hashedpassword",
                 CreatedAt = DateTime.UtcNow,
                 LastLogin = DateTime.UtcNow,
-                Status = "Active"
+                Status = "Active",
+                AvatarUrl = "/uploads/avatar2.jpg"
             };
-            await _context.Users.AddAsync(receiver);
-            await _context.SaveChangesAsync();
 
             var messageDto = new SendMessageDto
             {
@@ -58,19 +62,38 @@ namespace backend.UnitTests
                 Content = "Test message"
             };
 
-            // Act
-            var result = await _messageService.SendMessage(sender.Id, messageDto);
+            var users = new List<User> { sender, receiver };
+            var messages = new List<Message>();
 
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(messageDto.Content, result.Content);
-            Assert.Equal(sender.Id, result.Sender.Id);
-            Assert.Equal(receiver.Id, result.Receiver.Id);
-            Assert.False(result.IsRead);
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
+                .Options;
 
-            var messageInDb = await _context.Messages.FirstOrDefaultAsync(m => m.SenderId == sender.Id && m.ReceiverId == receiver.Id);
-            Assert.NotNull(messageInDb);
-            Assert.Equal(messageDto.Content, messageInDb.Content);
+            using (var context = new TestApplicationDbContext(options))
+            {
+                await context.Users.AddRangeAsync(users);
+                await context.SaveChangesAsync();
+
+                var messageService = new MessageService(context, _userServiceMock.Object);
+
+                // Act
+                var result = await messageService.SendMessage(sender.Id, messageDto);
+
+                // Assert
+                Assert.NotNull(result);
+                Assert.Equal(messageDto.Content, result.Content);
+                Assert.Equal(sender.Id, result.Sender.Id);
+                Assert.Equal(receiver.Id, result.Receiver.Id);
+                Assert.Equal(sender.AvatarUrl, result.Sender.AvatarUrl);
+                Assert.Equal(receiver.AvatarUrl, result.Receiver.AvatarUrl);
+                Assert.False(result.IsRead);
+
+                var savedMessage = await context.Messages.FirstOrDefaultAsync();
+                Assert.NotNull(savedMessage);
+                Assert.Equal(messageDto.Content, savedMessage.Content);
+                Assert.Equal(sender.Id, savedMessage.SenderId);
+                Assert.Equal(receiver.Id, savedMessage.ReceiverId);
+            }
         }
 
         [Fact]
@@ -84,7 +107,8 @@ namespace backend.UnitTests
                 PasswordHash = "hashedpassword",
                 CreatedAt = DateTime.UtcNow,
                 LastLogin = DateTime.UtcNow,
-                Status = "Active"
+                Status = "Active",
+                AvatarUrl = "/uploads/avatar.jpg"
             };
             await _context.Users.AddAsync(receiver);
             await _context.SaveChangesAsync();
@@ -96,7 +120,7 @@ namespace backend.UnitTests
             };
 
             // Act & Assert
-            await Assert.ThrowsAsync<Exception>(() => _messageService.SendMessage(999, messageDto));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _messageService.SendMessage(999, messageDto));
         }
 
         [Fact]
@@ -296,6 +320,14 @@ namespace backend.UnitTests
         {
             _context.Database.EnsureDeleted();
             _context.Dispose();
+        }
+    }
+
+    public class TestApplicationDbContext : ApplicationDbContext
+    {
+        public TestApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
         }
     }
 } 
