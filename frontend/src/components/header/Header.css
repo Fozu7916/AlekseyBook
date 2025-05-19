@@ -51,6 +51,36 @@
   justify-content: flex-end;
   align-items: center;
   padding-right: 2rem;
+  gap: 1rem;
+}
+
+.notifications-container {
+  position: relative;
+}
+
+.notifications-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.notifications-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.05);
+}
+
+.notifications-button:active {
+  transform: scale(0.95);
 }
 
 .home-button {
