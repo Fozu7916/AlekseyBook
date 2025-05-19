@@ -5,6 +5,7 @@ import './MessagesTab.css';
 import { TabProps } from './types';
 import { userService, User, Message, ChatPreview } from '../../services/userService';
 import { chatService } from '../../services/chatService';
+import { onlineStatusService } from '../../services/onlineStatusService';
 import { logger } from '../../services/loggerService';
 import { getMediaUrl } from '../../config/api.config';
 import MessageStatus from '../../components/MessageStatus';
@@ -186,14 +187,21 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       loadMessages(selectedChat.id, true);
       markMessagesAsRead(selectedChat.id);
 
-      const unsubscribe = chatService.onTypingStatus((userId, isTyping) => {
+      const unsubscribeTyping = chatService.onTypingStatus((userId, isTyping) => {
         if (userId === selectedChat.id.toString()) {
           setTypingUsers(prev => ({ ...prev, [userId]: isTyping }));
         }
       });
 
+      const unsubscribeOnlineStatus = onlineStatusService.onUserStatusChanged((userId, isOnline, lastLogin) => {
+        if (userId === selectedChat.id) {
+          setSelectedChat(prev => prev ? { ...prev, isOnline, lastLogin } : prev);
+        }
+      });
+
       return () => {
-        unsubscribe();
+        unsubscribeTyping();
+        unsubscribeOnlineStatus();
       };
     }
   }, [selectedChat, loadMessages, markMessagesAsRead]);
@@ -457,6 +465,62 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
     }
   };
 
+  const formatLastSeen = (user: User) => {
+    if (!user.lastLogin) {
+      return 'Не был в сети';
+    }
+    
+    if (user.isOnline) {
+      return 'онлайн';
+    }
+
+    const lastLogin = new Date(user.lastLogin + 'Z'); // Добавляем 'Z' для явного указания UTC
+    const now = new Date();
+    const diff = now.getTime() - lastLogin.getTime();
+    
+    // Меньше минуты
+    if (diff < 60000) {
+      return 'был только что';
+    }
+    
+    // Меньше часа
+    if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000);
+      return `был ${minutes} ${minutes === 1 ? 'минуту' : minutes < 5 ? 'минуты' : 'минут'} назад`;
+    }
+    
+    // Сегодня
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (lastLogin >= today) {
+      return `был сегодня в ${lastLogin.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      })}`;
+    }
+    
+    // Вчера
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (lastLogin >= yesterday) {
+      return `был вчера в ${lastLogin.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+      })}`;
+    }
+    
+    // Более старая дата
+    return `был ${lastLogin.toLocaleDateString('ru-RU', { 
+      day: 'numeric',
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })}`;
+  };
+
   const renderTypingStatus = () => {
     if (!selectedChat) return null;
     
@@ -475,7 +539,11 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
       );
     }
     
-    return selectedChat.status || 'Нет статуса';
+    return (
+      <div className={`chat-status ${selectedChat.isOnline ? 'online' : ''}`}>
+        {formatLastSeen(selectedChat)}
+      </div>
+    );
   };
 
   if (!isActive) return null;
@@ -526,11 +594,14 @@ const MessagesTab: React.FC<TabProps> = ({ isActive }) => {
         {selectedChat ? (
           <>
             <div className="chat-header">
-              <img
-                src={getMediaUrl(selectedChat.avatarUrl)}
-                alt={selectedChat.username}
-                className="chat-avatar"
-              />
+              <div className="chat-avatar-container">
+                <img
+                  src={getMediaUrl(selectedChat.avatarUrl)}
+                  alt={selectedChat.username}
+                  className="chat-avatar"
+                />
+                {selectedChat.isOnline && <div className="chat-online-indicator" />}
+              </div>
               <div className="chat-info">
                 <div className="chat-name">{selectedChat.username}</div>
                 <div className="chat-status">

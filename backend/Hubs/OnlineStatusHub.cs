@@ -13,14 +13,8 @@ namespace backend.Hubs
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<OnlineStatusHub> _logger;
-        private static readonly Dictionary<string, UserConnectionInfo> _userConnections = new();
-
-        private class UserConnectionInfo
-        {
-            public Dictionary<string, bool> ConnectionStates { get; set; } = new();
-
-            public bool IsAnyConnectionFocused => ConnectionStates.Values.Any(focused => focused);
-        }
+        private static readonly Dictionary<string, HashSet<string>> _userConnections = new();
+        private static readonly object _lock = new();
 
         public OnlineStatusHub(ApplicationDbContext context, ILogger<OnlineStatusHub> logger)
         {
@@ -33,21 +27,18 @@ namespace backend.Hubs
             try
             {
                 var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (userId == null)
+                if (string.IsNullOrEmpty(userId))
                 {
                     throw new HubException("Пользователь не аутентифицирован");
                 }
 
-                if (!_userConnections.ContainsKey(userId))
+                lock (_lock)
                 {
-                    _userConnections[userId] = new UserConnectionInfo 
-                    { 
-                        ConnectionStates = new Dictionary<string, bool> { { Context.ConnectionId, true } }
-                    };
-                }
-                else
-                {
-                    _userConnections[userId].ConnectionStates[Context.ConnectionId] = true;
+                    if (!_userConnections.ContainsKey(userId))
+                    {
+                        _userConnections[userId] = new HashSet<string>();
+                    }
+                    _userConnections[userId].Add(Context.ConnectionId);
                 }
 
                 var user = await _context.Users.FindAsync(int.Parse(userId));
@@ -79,14 +70,26 @@ namespace backend.Hubs
             try
             {
                 var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (userId != null && _userConnections.ContainsKey(userId))
+                if (!string.IsNullOrEmpty(userId))
                 {
-                    _userConnections[userId].ConnectionStates.Remove(Context.ConnectionId);
+                    bool shouldUpdateStatus = false;
 
-                    if (_userConnections[userId].ConnectionStates.Count == 0)
+                    lock (_lock)
                     {
-                        _userConnections.Remove(userId);
+                        if (_userConnections.ContainsKey(userId))
+                        {
+                            _userConnections[userId].Remove(Context.ConnectionId);
 
+                            if (_userConnections[userId].Count == 0)
+                            {
+                                _userConnections.Remove(userId);
+                                shouldUpdateStatus = true;
+                            }
+                        }
+                    }
+
+                    if (shouldUpdateStatus)
+                    {
                         var user = await _context.Users.FindAsync(int.Parse(userId));
                         if (user != null && user.IsOnline)
                         {
@@ -102,27 +105,6 @@ namespace backend.Hubs
                             });
                         }
                     }
-                    else
-                    {
-                        var isAnyConnectionFocused = _userConnections[userId].IsAnyConnectionFocused;
-                        var user = await _context.Users.FindAsync(int.Parse(userId));
-                        if (user != null && user.IsOnline != isAnyConnectionFocused)
-                        {
-                            user.IsOnline = isAnyConnectionFocused;
-                            if (!isAnyConnectionFocused)
-                            {
-                                user.LastLogin = DateTime.UtcNow;
-                            }
-                            await _context.SaveChangesAsync();
-
-                            await Clients.All.SendAsync("UserOnlineStatusChanged", new
-                            {
-                                UserId = user.Id,
-                                IsOnline = isAnyConnectionFocused,
-                                LastLogin = user.LastLogin
-                            });
-                        }
-                    }
                 }
 
                 await base.OnDisconnectedAsync(exception);
@@ -130,56 +112,6 @@ namespace backend.Hubs
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при отключении пользователя от OnlineStatusHub");
-                throw;
-            }
-        }
-
-        public async Task UpdateFocusState(bool isFocused)
-        {
-            try
-            {
-                var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (userId == null)
-                {
-                    throw new HubException("Пользователь не аутентифицирован");
-                }
-
-                if (_userConnections.ContainsKey(userId))
-                {
-                    var connectionInfo = _userConnections[userId];
-                    connectionInfo.ConnectionStates[Context.ConnectionId] = isFocused;
-                    
-                    var isAnyConnectionFocused = connectionInfo.IsAnyConnectionFocused;
-                    var user = await _context.Users.FindAsync(int.Parse(userId));
-                    
-                    if (user != null)
-                    {
-                        var wasOnline = user.IsOnline;
-                        user.IsOnline = isAnyConnectionFocused;
-
-                        if (wasOnline && !isAnyConnectionFocused)
-                        {
-                            user.LastLogin = DateTime.UtcNow;
-                        }
-                        
-                        await _context.SaveChangesAsync();
-
-                        _logger.LogInformation(
-                            "Обновление статуса пользователя {UserId}: IsOnline={IsOnline}, WasOnline={WasOnline}, IsFocused={IsFocused}, IsAnyConnectionFocused={IsAnyConnectionFocused}",
-                            userId, user.IsOnline, wasOnline, isFocused, isAnyConnectionFocused);
-
-                        await Clients.All.SendAsync("UserOnlineStatusChanged", new
-                        {
-                            UserId = user.Id,
-                            IsOnline = isAnyConnectionFocused,
-                            LastLogin = user.LastLogin
-                        });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Ошибка при обновлении состояния фокуса пользователя");
                 throw;
             }
         }

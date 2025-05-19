@@ -1,4 +1,4 @@
-import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HttpTransportType, LogLevel } from '@microsoft/signalr';
 import { logger } from './loggerService';
 import { API_CONFIG } from '../config/api.config';
 
@@ -9,14 +9,28 @@ interface OnlineStatusCallback {
 class OnlineStatusService {
   private connection: HubConnection | null = null;
   private callbacks: OnlineStatusCallback[] = [];
-  private handleFocus = () => this.updateFocusState(true);
-  private handleBlur = () => this.updateFocusState(false);
   private isConnected = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private lastFocusState: boolean | null = null;
+  private connectionPromise: Promise<void> | null = null;
+  private isConnecting = false;
+
+  public getConnectionStatus(): boolean {
+    return this.isConnected && this.connection?.state === 'Connected';
+  }
 
   async connect() {
+    if (this.isConnecting) {
+      await this.connectionPromise;
+      return;
+    }
+
+    if (this.connection?.state === 'Connected') {
+      return;
+    }
+
+    this.isConnecting = true;
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -28,8 +42,12 @@ class OnlineStatusService {
       }
 
       this.connection = new HubConnectionBuilder()
-        .withUrl(`${API_CONFIG.ONLINE_STATUS_HUB_URL}?access_token=${token}`)
+        .withUrl(`${API_CONFIG.ONLINE_STATUS_HUB_URL}?access_token=${token}`, {
+          transport: HttpTransportType.WebSockets,
+          skipNegotiation: true
+        })
         .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+        .configureLogging(LogLevel.Warning)
         .build();
 
       this.connection.on('UserOnlineStatusChanged', (data: { userId: number, isOnline: boolean, lastLogin: string }) => {
@@ -43,16 +61,12 @@ class OnlineStatusService {
         });
       });
 
-      await this.connection.start();
+      this.connectionPromise = this.connection.start();
+      await this.connectionPromise;
+      
       this.isConnected = true;
       this.reconnectAttempts = 0;
       logger.error('Подключение к хабу онлайн-статуса установлено');
-      
-      window.addEventListener('focus', this.handleFocus);
-      window.addEventListener('blur', this.handleBlur);
-      
-      this.lastFocusState = document.hasFocus();
-      await this.updateFocusState(this.lastFocusState);
 
       this.connection.onreconnecting(() => {
         logger.error('Переподключение к хабу онлайн-статуса...');
@@ -63,10 +77,6 @@ class OnlineStatusService {
         logger.error('Переподключение к хабу онлайн-статуса выполнено успешно');
         this.isConnected = true;
         this.reconnectAttempts = 0;
-        
-        if (this.lastFocusState !== null) {
-          await this.updateFocusState(this.lastFocusState);
-        }
       });
 
       this.connection.onclose(() => {
@@ -80,71 +90,36 @@ class OnlineStatusService {
       this.isConnected = false;
       this.scheduleReconnect();
       throw err;
+    } finally {
+      this.isConnecting = false;
+      this.connectionPromise = null;
     }
   }
 
   private scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.error('Достигнуто максимальное количество попыток переподключения');
-      return;
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000);
+      setTimeout(() => this.connect(), delay);
     }
+  }
 
-    setTimeout(async () => {
-      try {
-        if (!this.isConnected) {
-          this.reconnectAttempts++;
-          logger.error(`Попытка переподключения к хабу онлайн-статуса (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
-          await this.connect();
-        }
-      } catch (err) {
-        logger.error('Ошибка при попытке переподключения:', err);
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.scheduleReconnect();
-        }
-      }
-    }, Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000));
+  onUserStatusChanged(callback: OnlineStatusCallback) {
+    this.callbacks.push(callback);
+    return () => {
+      this.callbacks = this.callbacks.filter(cb => cb !== callback);
+    };
   }
 
   async disconnect() {
     try {
       if (this.connection) {
-        window.removeEventListener('focus', this.handleFocus);
-        window.removeEventListener('blur', this.handleBlur);
         this.isConnected = false;
-        this.lastFocusState = null;
         await this.connection.stop();
         this.connection = null;
       }
     } catch (err) {
       logger.error('Ошибка при отключении от хаба онлайн-статуса:', err);
-    }
-  }
-
-  async updateFocusState(isFocused: boolean) {
-    try {
-      if (!this.connection) {
-        logger.error('Соединение не инициализировано');
-        return;
-      }
-
-      if (this.connection.state !== 'Connected') {
-        logger.error(`Неверное состояние соединения: ${this.connection.state}`);
-        return;
-      }
-
-      if (!this.isConnected) {
-        logger.error('Соединение помечено как отключенное');
-        return;
-      }
-
-      this.lastFocusState = isFocused;
-
-      logger.error('Отправка обновления состояния фокуса:', isFocused);
-      await this.connection.invoke('UpdateFocusState', isFocused);
-    } catch (err) {
-      logger.error('Ошибка при обновлении состояния фокуса:', err);
-      this.isConnected = false;
-      this.scheduleReconnect();
     }
   }
 
@@ -156,13 +131,6 @@ class OnlineStatusService {
     } catch (err) {
       logger.error('Ошибка при получении списка онлайн пользователей:', err);
     }
-  }
-
-  onStatusChanged(callback: OnlineStatusCallback) {
-    this.callbacks.push(callback);
-    return () => {
-      this.callbacks = this.callbacks.filter(cb => cb !== callback);
-    };
   }
 }
 

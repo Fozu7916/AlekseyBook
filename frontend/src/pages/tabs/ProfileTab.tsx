@@ -105,37 +105,8 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-    let isConnectionEstablished = false;
 
-    const connectToOnlineStatus = async () => {
-      try {
-        await onlineStatusService.connect();
-        isConnectionEstablished = true;
-        unsubscribe = onlineStatusService.onStatusChanged((userId, isOnline, lastLogin) => {
-          logger.error('Получено обновление статуса в ProfileTab:', { userId, isOnline, lastLogin });
-          setUser(prevUser => {
-            if (prevUser && prevUser.id === userId) {
-              logger.error('Обновление статуса пользователя:', { 
-                prevIsOnline: prevUser.isOnline, 
-                newIsOnline: isOnline,
-                prevLastLogin: prevUser.lastLogin,
-                newLastLogin: lastLogin
-              });
-              return {
-                ...prevUser,
-                isOnline,
-                lastLogin
-              };
-            }
-            return prevUser;
-          });
-        });
-      } catch (err) {
-        logger.error('Ошибка при подключении к сервису онлайн-статуса:', err);
-      }
-    };
-
-    const fetchUserProfile = async () => {
+    const loadProfile = async () => {
       try {
         if (!username) return;
         
@@ -152,10 +123,27 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
         const isOwner = currentUserData?.username === username;
         setIsOwner(isOwner);
 
-        // Если соединение уже установлено, обновляем статус
-        if (isConnectionEstablished) {
-          await onlineStatusService.updateFocusState(document.hasFocus());
-        }
+        // Подписываемся на обновления статуса для всех пользователей
+        unsubscribe = onlineStatusService.onUserStatusChanged((userId: number, isOnline: boolean, lastLogin: Date) => {
+          logger.error('Получено обновление статуса в ProfileTab:', { userId, isOnline, lastLogin });
+          // Обновляем статус как для основного пользователя, так и для друзей
+          setUser(prevUser => {
+            if (prevUser && prevUser.id === userId) {
+              return { ...prevUser, isOnline, lastLogin };
+            }
+            return prevUser;
+          });
+          setFriends(prevFriends => 
+            prevFriends.map(friend => 
+              friend.id === userId 
+                ? { ...friend, isOnline, lastLogin }
+                : friend
+            )
+          );
+        });
+
+        // Запрашиваем актуальные статусы
+        await onlineStatusService.getOnlineUsers();
 
         try {
           const userPosts = await postService.getUserPosts(userData.id);
@@ -202,16 +190,12 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
       }
     };
 
-    // Сначала устанавливаем соединение, затем загружаем профиль
-    connectToOnlineStatus().then(() => {
-      fetchUserProfile();
-    });
+    loadProfile();
 
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
-      onlineStatusService.disconnect();
     };
   }, [username]);
 
@@ -1089,14 +1073,19 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
               <>
                 {friends.slice(0, 3).map(friend => (
                   <div key={friend.id} className="friend-card" onClick={() => navigate(`/profile/${friend.username}`)}>
-                    <img 
-                      src={getMediaUrl(friend.avatarUrl)} 
-                      alt={friend.username} 
-                      className="friend-avatar"
-                    />
+                    <div className="friend-avatar-container">
+                      <img 
+                        src={getMediaUrl(friend.avatarUrl)} 
+                        alt={friend.username} 
+                        className="friend-avatar"
+                      />
+                      {friend.isOnline && <div className="friend-online-indicator" />}
+                    </div>
                     <div className="friend-info">
                       <div className="friend-name">{friend.username}</div>
-                      <div className="friend-status">{friend.status || 'Нет статуса'}</div>
+                      <div className={`friend-status ${friend.isOnline ? 'online' : ''}`}>
+                        {friend.isOnline ? 'онлайн' : friend.status || 'Нет статуса'}
+                      </div>
                     </div>
                   </div>
                 ))}

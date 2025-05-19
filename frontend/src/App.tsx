@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
-import Auth from './pages/Auth/Auth';
+import { onlineStatusService } from './services/onlineStatusService';
 import Home from './pages/Home';
+import Auth from './pages/Auth/Auth';
 import './App.css';
 
 const router = createBrowserRouter([
@@ -60,7 +61,25 @@ const router = createBrowserRouter([
   }
 });
 
-function App() {
+const App: React.FC = () => {
+  useEffect(() => {
+    const connectToHub = async () => {
+      try {
+        if (!onlineStatusService.getConnectionStatus()) {
+          await onlineStatusService.connect();
+        }
+      } catch (err) {
+        console.error('Ошибка при подключении к хабу онлайн-статуса:', err);
+      }
+    };
+
+    connectToHub();
+
+    return () => {
+      onlineStatusService.disconnect();
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <div className="App">
@@ -68,6 +87,6 @@ function App() {
       </div>
     </AuthProvider>
   );
-}
+};
 
 export default App;
