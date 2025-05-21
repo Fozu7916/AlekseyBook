@@ -74,6 +74,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IWallPostService, WallPostService>();
 builder.Services.AddScoped<ILikeCommentService, LikeCommentService>();
 
@@ -136,6 +137,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>(Config.ChatHubUrl.Replace(Config.BackendUrl, ""));
 app.MapHub<OnlineStatusHub>(Config.OnlineStatusHubUrl.Replace(Config.BackendUrl, ""));
+app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();
 

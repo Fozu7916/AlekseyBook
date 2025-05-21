@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using System.Collections;
 using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.AspNetCore.SignalR;
+using backend.Hubs;
 
 namespace backend.UnitTests
 {
@@ -16,6 +18,7 @@ namespace backend.UnitTests
     {
         private readonly ApplicationDbContext _context;
         private readonly Mock<IUserService> _userServiceMock;
+        private readonly Mock<IHubContext<ChatHub>> _hubContextMock;
         private readonly MessageService _messageService;
 
         public MessageServiceTests()
@@ -25,7 +28,15 @@ namespace backend.UnitTests
                 .Options;
             _context = new ApplicationDbContext(options);
             _userServiceMock = new Mock<IUserService>();
-            _messageService = new MessageService(_context, _userServiceMock.Object);
+            _hubContextMock = new Mock<IHubContext<ChatHub>>();
+
+            var mockClients = new Mock<IHubClients>();
+            var mockClientProxy = new Mock<IClientProxy>();
+            mockClients.Setup(x => x.Groups(It.IsAny<IReadOnlyList<string>>()))
+                .Returns(mockClientProxy.Object);
+            _hubContextMock.Setup(x => x.Clients).Returns(mockClients.Object);
+
+            _messageService = new MessageService(_context, _userServiceMock.Object, _hubContextMock.Object);
         }
 
         [Fact]
@@ -74,7 +85,7 @@ namespace backend.UnitTests
                 await context.Users.AddRangeAsync(users);
                 await context.SaveChangesAsync();
 
-                var messageService = new MessageService(context, _userServiceMock.Object);
+                var messageService = new MessageService(context, _userServiceMock.Object, _hubContextMock.Object);
 
                 // Act
                 var result = await messageService.SendMessage(sender.Id, messageDto);

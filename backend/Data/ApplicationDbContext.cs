@@ -13,6 +13,10 @@ namespace backend.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Friend> Friends { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<WallPost> WallPosts { get; set; }
+        public DbSet<Comment> Comments { get; set; }
+        public DbSet<Like> Likes { get; set; }
         public DbSet<Community> Communities { get; set; }
         public DbSet<CommunityMember> CommunityMembers { get; set; }
         public DbSet<CommunityPost> CommunityPosts { get; set; }
@@ -20,9 +24,6 @@ namespace backend.Data
         public DbSet<UserTrack> UserTracks { get; set; }
         public DbSet<Playlist> Playlists { get; set; }
         public DbSet<PlaylistTrack> PlaylistTracks { get; set; }
-        public DbSet<WallPost> WallPosts { get; set; }
-        public DbSet<Like> Likes { get; set; }
-        public DbSet<Comment> Comments { get; set; }
         public DbSet<CommentLike> CommentLikes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -45,6 +46,7 @@ namespace backend.Data
                 entity.Property(e => e.IsVerified).HasColumnName("is_verified");
                 entity.Property(e => e.IsBanned).HasColumnName("is_banned");
                 entity.Property(e => e.Bio).HasColumnName("bio").IsRequired(false);
+                entity.Property(e => e.IsOnline).HasColumnName("is_online");
 
                 entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
@@ -94,6 +96,28 @@ namespace backend.Data
                     .WithMany()
                     .HasForeignKey(m => m.ReceiverId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.ToTable("notifications");
+
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.UserId).HasColumnName("user_id");
+                entity.Property(e => e.Type).HasColumnName("type");
+                entity.Property(e => e.Title).HasColumnName("title");
+                entity.Property(e => e.Text).HasColumnName("text");
+                entity.Property(e => e.Link).HasColumnName("link");
+                entity.Property(e => e.IsRead).HasColumnName("is_read");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+
+                entity.HasOne(n => n.User)
+                    .WithMany()
+                    .HasForeignKey(n => n.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(n => n.UserId);
+                entity.HasIndex(n => n.CreatedAt);
             });
 
             modelBuilder.Entity<Community>()

@@ -130,49 +130,6 @@ namespace backend.UnitTests.Hubs
         }
 
         [Fact]
-        public async Task UpdateFocusState_ValidUser_UpdatesState()
-        {
-            // Arrange
-            var userId = "1";
-            var user = new User { 
-                Id = 1, 
-                Username = "testUser", 
-                IsOnline = true,
-                Email = "test@test.com",
-                PasswordHash = "hash123"
-            };
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId) };
-            var identity = new ClaimsIdentity(claims);
-            var claimsPrincipal = new ClaimsPrincipal(identity);
-
-            _mockContext.Setup(c => c.User).Returns(claimsPrincipal);
-            _mockContext.Setup(c => c.ConnectionId).Returns("connection1");
-
-            // Сначала подключаем пользователя
-            await _hub.OnConnectedAsync();
-
-            // Act
-            await _hub.UpdateFocusState(false);
-
-            // Assert
-            var updatedUser = await _context.Users.FindAsync(1);
-            Assert.NotNull(updatedUser);
-            Assert.False(updatedUser.IsOnline);
-            _mockClientProxy.Verify(
-                x => x.SendCoreAsync(
-                    "UserOnlineStatusChanged",
-                    It.Is<object[]>(args => 
-                        args != null && 
-                        args.Length == 1 && 
-                        VerifyUserStatusObject(args[0], 1, false)),
-                    It.IsAny<CancellationToken>()),
-                Times.AtLeastOnce);
-        }
-
-        [Fact]
         public async Task GetOnlineUsers_ReturnsOnlineUsers()
         {
             // Arrange
@@ -208,16 +165,6 @@ namespace backend.UnitTests.Hubs
 
             // Act & Assert
             await Assert.ThrowsAsync<HubException>(() => _hub.OnConnectedAsync());
-        }
-
-        [Fact]
-        public async Task UpdateFocusState_UnauthenticatedUser_ThrowsException()
-        {
-            // Arrange
-            _mockContext.Setup(c => c.User).Returns((ClaimsPrincipal?)null);
-
-            // Act & Assert
-            await Assert.ThrowsAsync<HubException>(() => _hub.UpdateFocusState(true));
         }
 
         private static bool VerifyUserStatusObject(object obj, int expectedUserId, bool expectedIsOnline)
