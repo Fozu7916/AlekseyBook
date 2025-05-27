@@ -49,7 +49,7 @@ namespace backend.Services
             {
                 _context.Likes.Remove(existingLike);
                 await _context.SaveChangesAsync();
-                throw new Exception("Like removed");
+                return null;
             }
 
             var post = await _context.WallPosts.FindAsync(postId) 
