@@ -8,6 +8,8 @@ import { onlineStatusService } from '../../services/onlineStatusService';
 import './ProfileTab.css';
 import { logger } from '../../services/loggerService';
 import { getMediaUrl } from '../../config/api.config';
+import { notificationService } from '../../services/notificationService';
+import { NOTIFICATION_TYPES } from '../../types/notification';
 
 interface ProfileTabProps extends TabProps {
   username: string;
@@ -33,6 +35,10 @@ interface MusicTrack {
   title: string;
   artist: string;
   coverUrl?: string;
+}
+
+interface PostComments {
+  [key: string]: Comment[];
 }
 
 const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
@@ -96,7 +102,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
   const [activePostMenu, setActivePostMenu] = useState<number | null>(null);
   const [activeComments, setActiveComments] = useState<number | null>(null);
   const [commentText, setCommentText] = useState('');
-  const [postComments, setPostComments] = useState<{[key: number]: Comment[]}>({});
+  const [postComments, setPostComments] = useState<PostComments>({});
 
   const [activeCommentMenu, setActiveCommentMenu] = useState<number | null>(null);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
@@ -345,6 +351,17 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
       if (!user) return;
       await userService.sendFriendRequest(user.id);
       setFriendRequestSent(true);
+      
+      // Отправляем уведомление о заявке в друзья
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      await notificationService.createNotification(
+        user.id,
+        NOTIFICATION_TYPES.FRIEND_REQUEST,
+        'Новая заявка в друзья',
+        `Пользователь ${currentUser.username} хочет добавить вас в друзья`,
+        `/profile/${currentUser.username}`
+      );
+      
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при добавлении в друзья');
@@ -391,10 +408,23 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     }
   };
 
-  const handleLikeClick = async (postId: number) => {
+  const handleToggleLike = async (postId: number) => {
     try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const postAuthor = posts.find(p => p.id === postId);
+      
       setPosts(prevPosts => prevPosts.map(post => {
         if (post.id === postId) {
+          // Если ставим лайк (а не убираем)
+          if (!post.isLiked && postAuthor && postAuthor.authorId !== currentUser.id) {
+            notificationService.createNotification(
+              postAuthor.authorId,
+              NOTIFICATION_TYPES.POST_LIKE,
+              'Новый лайк',
+              `Пользователю ${currentUser.username} понравился ваш пост`,
+              `/posts/${postId}`
+            );
+          }
           return {
             ...post,
             isLiked: !post.isLiked,
@@ -476,7 +506,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     try {
       const updatedPost = await postService.updatePost(editingPost.id, editPostContent);
       setPosts(prevPosts => prevPosts.map(post => 
-        post.id === editingPost.id ? { ...updatedPost, isLiked: post.isLiked } : post
+        post.id === editingPost.id ? updatedPost : post
       ));
       setEditingPost(null);
       setEditPostContent('');
@@ -513,7 +543,49 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
     if (!commentText.trim()) return;
 
     try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const postAuthor = posts.find(p => p.id === postId);
+      
       const newComment = await postService.addComment(postId, commentText.trim());
+      
+      // Отправляем уведомление автору поста
+      if (postAuthor && postAuthor.id !== currentUser.id) {
+        await notificationService.createNotification(
+          postAuthor.id,
+          NOTIFICATION_TYPES.COMMENT,
+          'Новый комментарий',
+          `Пользователь ${currentUser.username} оставил комментарий к вашему посту`,
+          `/posts/${postId}`
+        );
+      }
+
+      // Проверяем упоминания пользователей в комментарии
+      const mentions = commentText.match(/@(\w+)/g);
+      if (mentions) {
+        const mentionedUsers = await Promise.all(
+          mentions.map(async mention => {
+            const username = mention.substring(1);
+            try {
+              return await userService.getUserByUsername(username);
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        // Отправляем уведомления упомянутым пользователям
+        for (const user of mentionedUsers) {
+          if (user && user.id !== currentUser.id) {
+            await notificationService.createNotification(
+              user.id,
+              NOTIFICATION_TYPES.COMMENT_REPLY,
+              'Ответ на комментарий',
+              `Пользователь ${currentUser.username} упомянул вас в комментарии`,
+              `/posts/${postId}`
+            );
+          }
+        }
+      }
       
       setPostComments(prev => ({
         ...prev,
@@ -534,11 +606,39 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
 
   const handleCommentLike = async (commentId: number) => {
     try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Находим комментарий и его автора
+      let commentAuthorId: number | undefined;
+      Object.values(postComments as PostComments).forEach(comments => {
+        const comment = comments.find(c => c.id === commentId);
+        if (comment) {
+          commentAuthorId = comment.author.id;
+        }
+      });
+
+      // Если нашли автора комментария и это не текущий пользователь
+      if (commentAuthorId && commentAuthorId !== currentUser.id) {
+        const postId = Object.keys(postComments).find(postId => 
+          (postComments as PostComments)[postId].some(c => c.id === commentId)
+        );
+        
+        if (postId) {
+          await notificationService.createNotification(
+            commentAuthorId,
+            NOTIFICATION_TYPES.COMMENT_LIKE,
+            'Новый лайк',
+            `Пользователю ${currentUser.username} понравился ваш комментарий`,
+            `/posts/${postId}`
+          );
+        }
+      }
+
       await postService.toggleCommentLike(commentId);
       
       // Оптимистичное обновление
       setPostComments(prev => {
-        const updatedComments: { [key: string]: Comment[] } = { ...prev };
+        const updatedComments: PostComments = { ...prev };
         Object.keys(updatedComments).forEach((postId: string) => {
           updatedComments[postId] = updatedComments[postId].map((comment: Comment) => 
             comment.id === commentId 
@@ -890,7 +990,7 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ isActive, username }) => {
                   <div className="post-footer">
                     <button 
                       className={`post-action ${post.isLiked ? 'liked' : ''}`} 
-                      onClick={() => handleLikeClick(post.id)}
+                      onClick={() => handleToggleLike(post.id)}
                     >
                       <span className="action-icon">❤️</span>
                       {post.likes}

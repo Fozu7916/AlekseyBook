@@ -111,5 +111,20 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpPost]
+        public async Task<ActionResult<NotificationDto>> CreateNotification([FromBody] CreateNotificationDto notificationDto)
+        {
+            try
+            {
+                var notification = await _notificationService.CreateNotification(notificationDto);
+                return Ok(notification);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании уведомления");
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 } 

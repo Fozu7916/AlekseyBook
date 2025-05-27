@@ -7,7 +7,8 @@ namespace backend.Models
     {
         Message = 0,
         Friend = 1,
-        System = 2
+        System = 2,
+        Like = 3
     }
 
     [Table("notifications")]

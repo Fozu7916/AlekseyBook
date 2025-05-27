@@ -116,5 +116,12 @@ namespace backend.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        [HttpGet("search")]
+        public async Task<ActionResult<List<UserResponseDto>>> SearchUsers([FromQuery] string searchTerm, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            var users = await _userService.SearchUsers(searchTerm, page, pageSize);
+            return Ok(users);
+        }
     }
 } 

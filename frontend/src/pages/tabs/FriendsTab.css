@@ -8,6 +8,30 @@
   margin-bottom: 24px;
 }
 
+.search-container {
+  margin: 16px 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #40444b;
+  border-radius: 8px;
+  background: #2c2f33;
+  color: #fff;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.search-input::placeholder {
+  color: #72767d;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #5865f2;
+}
+
 .friends-tabs {
   display: flex;
   gap: 12px;

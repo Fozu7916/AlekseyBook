@@ -11,6 +11,7 @@ namespace backend.Services.Interfaces
         Task<UserResponseDto?> GetUserById(int id);
         Task<UserResponseDto?> GetUserByUsername(string username);
         Task<List<UserResponseDto>> GetUsers(int page = 1, int pageSize = 10);
+        Task<List<UserResponseDto>> SearchUsers(string searchTerm, int page = 1, int pageSize = 10);
         Task<UserResponseDto?> UpdateUser(int id, UpdateUserDto updateUserDto);
         Task<bool> DeleteUser(int id);
         string HashPassword(string password);

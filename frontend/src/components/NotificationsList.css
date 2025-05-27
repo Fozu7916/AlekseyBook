@@ -1,0 +1,133 @@
+.notifications-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.notifications-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 24rem;
+    background-color: #161718;
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.notifications-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.notifications-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.notifications-mark-read {
+    font-size: 0.875rem;
+    color: #2563eb;
+    cursor: pointer;
+}
+
+.notifications-mark-read:hover {
+    color: #1d4ed8;
+}
+
+.notifications-close {
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.notifications-close:hover {
+    color: #6b7280;
+}
+
+.notifications-content {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.notification-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background-color: #f9fafb;
+}
+
+.notification-item.unread {
+    background-color: #eff6ff;
+}
+
+.notification-icon {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.notification-body {
+    flex-grow: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.notification-text {
+    color: #4b5563;
+}
+
+.notification-time {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.notification-delete {
+    color: #9ca3af;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.notification-delete:hover {
+    color: #ef4444;
+}
+
+.notifications-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #6b7280;
+}
+
+.notifications-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 8rem;
+}
+
+.notifications-error {
+    padding: 1rem;
+    text-align: center;
+    color: #dc2626;
+} 

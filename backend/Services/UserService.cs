@@ -414,5 +414,15 @@ namespace backend.Services
 
             return avatarUrl;
         }
+
+        public async Task<List<UserResponseDto>> SearchUsers(string searchTerm, int page = 1, int pageSize = 10)
+        {
+            return await _context.Users
+                .Where(u => u.Username.Contains(searchTerm))
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => MapToDto(u))
+                .ToListAsync();
+        }
     }
 } 

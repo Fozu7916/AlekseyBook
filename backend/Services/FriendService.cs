@@ -29,9 +29,6 @@ namespace backend.Services
 
             if (existingFriendship != null)
             {
-                if (existingFriendship.Status == FriendStatus.Blocked)
-                    throw new Exception("Невозможно отправить запрос");
-                
                 if (existingFriendship.Status == FriendStatus.Accepted)
                     throw new Exception("Пользователь уже в списке друзей");
                 

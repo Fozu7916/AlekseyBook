@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import './FriendsTab.css';
 import { TabProps } from './types';
 import { userService, User } from '../../services/userService';
 import { getMediaUrl } from '../../config/api.config';
+import { notificationService } from '../../services/notificationService';
+import { NOTIFICATION_TYPES } from '../../types/notification';
 
 const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const [friends, setFriends] = useState<User[]>([]);
@@ -13,8 +15,31 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<'friends' | 'pending' | 'sent'>('friends');
+  const [searchQuery, setSearchQuery] = useState('');
   
   const navigate = useNavigate();
+
+  // Фильтрация списков на основе поискового запроса
+  const filteredFriends = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return friends.filter(friend => 
+      friend.username.toLowerCase().includes(query)
+    );
+  }, [friends, searchQuery]);
+
+  const filteredPendingRequests = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return pendingRequests.filter(user => 
+      user.username.toLowerCase().includes(query)
+    );
+  }, [pendingRequests, searchQuery]);
+
+  const filteredSentRequests = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return sentRequests.filter(user => 
+      user.username.toLowerCase().includes(query)
+    );
+  }, [sentRequests, searchQuery]);
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -43,6 +68,16 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
       const friendsList = await userService.getFriendsList();
       setFriends(friendsList.friends);
       setPendingRequests(friendsList.pendingRequests);
+
+      // Отправляем уведомление о принятии заявки
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      await notificationService.createNotification(
+        userId,
+        NOTIFICATION_TYPES.FRIEND_ACCEPTED,
+        'Заявка в друзья принята',
+        `${currentUser.username} принял(а) вашу заявку в друзья`,
+        `/profile/${currentUser.username}`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при принятии заявки');
     }
@@ -82,6 +117,15 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
       <div className="tab-content friends-tab">
         <div className="friends-header">
           <h2 className="tab-title">Друзья</h2>
+          <div className="search-container">
+            <input
+              type="text"
+              placeholder="Поиск друзей..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
           <div className="friends-tabs">
             <button 
               className={`tab-button ${activeSection === 'friends' ? 'active' : ''}`}
@@ -111,8 +155,8 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
         ) : (
           <div className="friends-list">
             {activeSection === 'friends' && (
-              friends.length > 0 ? (
-                friends.map(friend => (
+              filteredFriends.length > 0 ? (
+                filteredFriends.map(friend => (
                   <div key={friend.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${friend.username}`)}>
                       <img 
@@ -141,14 +185,16 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                     </div>
                   </div>
                 ))
+              ) : searchQuery ? (
+                <div className="empty-message">Ничего не найдено</div>
               ) : (
                 <div className="empty-message">У вас пока нет друзей</div>
               )
             )}
 
             {activeSection === 'pending' && (
-              pendingRequests.length > 0 ? (
-                pendingRequests.map(user => (
+              filteredPendingRequests.length > 0 ? (
+                filteredPendingRequests.map(user => (
                   <div key={user.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
                       <img 
@@ -177,14 +223,16 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                     </div>
                   </div>
                 ))
+              ) : searchQuery ? (
+                <div className="empty-message">Ничего не найдено</div>
               ) : (
                 <div className="empty-message">Нет входящих заявок</div>
               )
             )}
 
             {activeSection === 'sent' && (
-              sentRequests.length > 0 ? (
-                sentRequests.map(user => (
+              filteredSentRequests.length > 0 ? (
+                filteredSentRequests.map(user => (
                   <div key={user.id} className="friend-item">
                     <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
                       <img 
@@ -207,6 +255,8 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                     </div>
                   </div>
                 ))
+              ) : searchQuery ? (
+                <div className="empty-message">Ничего не найдено</div>
               ) : (
                 <div className="empty-message">Нет исходящих заявок</div>
               )

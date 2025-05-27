@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Header.css';
 import UserDropdown from './UserDropdown';
-import NotificationsPopup from '../NotificationsPopup';
+import { NotificationButton } from '../NotificationButton';
 import { userService } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -14,7 +14,6 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onProfileClick, onHomeClick }) => {
   const { user, setUser } = useAuth();
   const [showInfo, setShowInfo] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
     userService.logout();
@@ -43,21 +42,9 @@ const Header: React.FC<HeaderProps> = ({ onProfileClick, onHomeClick }) => {
             </div>
           )}
         </div>
+        
         <div className="header-user">
-          {user && (
-            <div className="notifications-container">
-              <button 
-                className="notifications-button" 
-                onClick={() => setShowNotifications(!showNotifications)}
-              >
-                🔔
-              </button>
-              <NotificationsPopup 
-                isOpen={showNotifications} 
-                onClose={() => setShowNotifications(false)} 
-              />
-            </div>
-          )}
+          {user && <NotificationButton />}
           {user ? (
             <UserDropdown 
               user={user}

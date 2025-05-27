@@ -1,5 +1,7 @@
 import { logger } from './loggerService';
 import { API_CONFIG } from '../config/api.config';
+import { UserResponse } from '../types/user';
+import { api } from './api';
 
 export interface User {
   id: number;
@@ -494,6 +496,16 @@ class UserService {
 
   async getUnreadMessagesCount(): Promise<number> {
     return this.request('/messages/unread/count');
+  }
+
+  async getUsers(page: number = 1, pageSize: number = 20): Promise<UserResponse[]> {
+    const response = await api.get(`/users?page=${page}&pageSize=${pageSize}`);
+    return response.data;
+  }
+
+  async searchUsers(searchTerm: string, page: number = 1, pageSize: number = 20): Promise<UserResponse[]> {
+    const response = await api.get(`/users/search?searchTerm=${encodeURIComponent(searchTerm)}&page=${page}&pageSize=${pageSize}`);
+    return response.data;
   }
 }
 
