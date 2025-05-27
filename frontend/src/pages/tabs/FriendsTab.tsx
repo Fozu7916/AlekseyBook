@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Tabs.css';
 import './FriendsTab.css';
@@ -12,11 +12,28 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
   const [friends, setFriends] = useState<User[]>([]);
   const [pendingRequests, setPendingRequests] = useState<User[]>([]);
   const [sentRequests, setSentRequests] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<'friends' | 'pending' | 'sent'>('friends');
+  const [activeSection, setActiveSection] = useState<'friends' | 'pending' | 'sent' | 'all'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastUserElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (isLoadingMore) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setPage(prevPage => prevPage + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [isLoadingMore, hasMore]);
+
   const navigate = useNavigate();
 
   // Фильтрация списков на основе поискового запроса
@@ -41,6 +58,21 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
     );
   }, [sentRequests, searchQuery]);
 
+  const filteredAllUsers = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return allUsers.filter(user => 
+      user.username.toLowerCase().includes(query)
+    );
+  }, [allUsers, searchQuery]);
+
+  useEffect(() => {
+    // Получаем текущего пользователя из localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.id) {
+      setCurrentUserId(user.id);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchFriends = async () => {
       try {
@@ -61,6 +93,31 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
       fetchFriends();
     }
   }, [isActive]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (activeSection !== 'all' || !isActive) return;
+      
+      try {
+        setIsLoadingMore(true);
+        const usersResponse = await userService.getUsers(page, 20);
+        const transformedUsers = usersResponse.map(user => ({
+          ...user,
+          isOnline: false,
+          createdAt: new Date(user.createdAt),
+          lastLogin: new Date(user.lastLogin)
+        }));
+        setAllUsers(prev => page === 1 ? transformedUsers : [...prev, ...transformedUsers]);
+        setHasMore(usersResponse.length === 20);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ошибка при загрузке пользователей');
+      } finally {
+        setIsLoadingMore(false);
+      }
+    };
+
+    fetchUsers();
+  }, [page, activeSection, isActive]);
 
   const handleAcceptFriend = async (userId: number) => {
     try {
@@ -110,6 +167,17 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
     }
   };
 
+  const handleSendFriendRequest = async (userId: number) => {
+    try {
+      await userService.sendFriendRequest(userId);
+      // Обновляем список отправленных заявок
+      const friendsList = await userService.getFriendsList();
+      setSentRequests(friendsList.sentRequests);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка при отправке заявки');
+    }
+  };
+
   if (!isActive) return null;
 
   return (
@@ -120,7 +188,7 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
           <div className="search-container">
             <input
               type="text"
-              placeholder="Поиск друзей..."
+              placeholder="Поиск..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
@@ -129,21 +197,40 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
           <div className="friends-tabs">
             <button 
               className={`tab-button ${activeSection === 'friends' ? 'active' : ''}`}
-              onClick={() => setActiveSection('friends')}
+              onClick={() => {
+                setActiveSection('friends');
+                setPage(1);
+              }}
             >
               Все друзья <span className="count">({friends.length})</span>
             </button>
             <button 
               className={`tab-button ${activeSection === 'pending' ? 'active' : ''}`}
-              onClick={() => setActiveSection('pending')}
+              onClick={() => {
+                setActiveSection('pending');
+                setPage(1);
+              }}
             >
               Входящие <span className="count">({pendingRequests.length})</span>
             </button>
             <button 
               className={`tab-button ${activeSection === 'sent' ? 'active' : ''}`}
-              onClick={() => setActiveSection('sent')}
+              onClick={() => {
+                setActiveSection('sent');
+                setPage(1);
+              }}
             >
               Исходящие <span className="count">({sentRequests.length})</span>
+            </button>
+            <button 
+              className={`tab-button ${activeSection === 'all' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveSection('all');
+                setPage(1);
+                setAllUsers([]);
+              }}
+            >
+              Все пользователи
             </button>
           </div>
         </div>
@@ -259,6 +346,52 @@ const FriendsTab: React.FC<TabProps> = ({ isActive }) => {
                 <div className="empty-message">Ничего не найдено</div>
               ) : (
                 <div className="empty-message">Нет исходящих заявок</div>
+              )
+            )}
+
+            {activeSection === 'all' && (
+              filteredAllUsers.length > 0 ? (
+                <>
+                  {filteredAllUsers.map((user, index) => (
+                    <div 
+                      key={user.id} 
+                      className="friend-item"
+                      ref={index === filteredAllUsers.length - 1 ? lastUserElementRef : null}
+                    >
+                      <div className="friend-info" onClick={() => navigate(`/profile/${user.username}`)}>
+                        <img 
+                          src={getMediaUrl(user.avatarUrl)} 
+                          alt={user.username} 
+                          className="friend-avatar"
+                        />
+                        <div className="friend-details">
+                          <div className="friend-name">{user.username}</div>
+                          <div className="friend-status">{user.status || 'Нет статуса'}</div>
+                        </div>
+                      </div>
+                      <div className="friend-actions">
+                        {!friends.some(friend => friend.id === user.id) && 
+                         !sentRequests.some(request => request.id === user.id) && 
+                         !pendingRequests.some(request => request.id === user.id) && 
+                         user.id !== currentUserId && (
+                          <button 
+                            className="action-button add"
+                            onClick={() => handleSendFriendRequest(user.id)}
+                          >
+                            Добавить в друзья
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {isLoadingMore && (
+                    <div className="loading-message">Загрузка...</div>
+                  )}
+                </>
+              ) : searchQuery ? (
+                <div className="empty-message">Ничего не найдено</div>
+              ) : (
+                <div className="empty-message">Нет пользователей</div>
               )
             )}
           </div>
