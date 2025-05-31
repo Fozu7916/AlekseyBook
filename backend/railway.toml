@@ -1,10 +1,9 @@
 [build]
 builder = "nixpacks"
 baseDirectory = "."
-buildCommand = "dotnet publish -c Release -o out"
+dockerfile = "./Dockerfile"
 
 [deploy]
-startCommand = "dotnet out/backend.dll"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "on-failure"
