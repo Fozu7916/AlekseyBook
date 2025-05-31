@@ -142,7 +142,7 @@ namespace backend.UnitTests
         }
 
         [Fact]
-        public async Task ToggleLike_RemoveLike_ReturnsException()
+        public async Task ToggleLike_RemoveLike_ReturnsNull()
         {
             // Arrange
             var user = new User
@@ -194,10 +194,11 @@ namespace backend.UnitTests
             await _context.Likes.AddAsync(like);
             await _context.SaveChangesAsync();
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<Exception>(
-                async () => await _likeCommentService.ToggleLikeAsync(post.Id, user.Id));
-            Assert.Equal("Like removed", exception.Message);
+            // Act
+            var result = await _likeCommentService.ToggleLikeAsync(post.Id, user.Id);
+
+            // Assert
+            Assert.Null(result);
 
             var likeInDb = await _context.Likes.FirstOrDefaultAsync(l => l.UserId == user.Id && l.WallPostId == post.Id);
             Assert.Null(likeInDb);
