@@ -28,47 +28,52 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ isOpen, on
         }
     };
 
+    // Подключение к хабу при монтировании компонента
+    useEffect(() => {
+        // Подключаемся к хабу
+        notificationHubService.connect();
+
+        // Подписываемся на события
+        const unsubscribeNew = notificationHubService.onNotification((notification) => {
+            setNotifications(prev => [notification, ...prev]);
+        });
+
+        const unsubscribeRead = notificationHubService.onNotificationRead((notificationId) => {
+            setNotifications(prev =>
+                prev.map(notification =>
+                    notification.id === notificationId
+                        ? { ...notification, isRead: true }
+                        : notification
+                )
+            );
+        });
+
+        const unsubscribeAllRead = notificationHubService.onAllNotificationsRead(() => {
+            setNotifications(prev =>
+                prev.map(notification => ({ ...notification, isRead: true }))
+            );
+        });
+
+        const unsubscribeDeleted = notificationHubService.onNotificationDeleted((notificationId) => {
+            setNotifications(prev =>
+                prev.filter(notification => notification.id !== notificationId)
+            );
+        });
+
+        // Отписываемся при размонтировании
+        return () => {
+            unsubscribeNew();
+            unsubscribeRead();
+            unsubscribeAllRead();
+            unsubscribeDeleted();
+            notificationHubService.disconnect();
+        };
+    }, []); // Пустой массив зависимостей - эффект выполняется только при монтировании
+
+    // Загрузка уведомлений при открытии панели
     useEffect(() => {
         if (isOpen) {
             loadNotifications();
-            
-            // Подключаемся к хабу при открытии
-            notificationHubService.connect();
-
-            // Подписываемся на события
-            const unsubscribeNew = notificationHubService.onNotification((notification) => {
-                setNotifications(prev => [notification, ...prev]);
-            });
-
-            const unsubscribeRead = notificationHubService.onNotificationRead((notificationId) => {
-                setNotifications(prev =>
-                    prev.map(notification =>
-                        notification.id === notificationId
-                            ? { ...notification, isRead: true }
-                            : notification
-                    )
-                );
-            });
-
-            const unsubscribeAllRead = notificationHubService.onAllNotificationsRead(() => {
-                setNotifications(prev =>
-                    prev.map(notification => ({ ...notification, isRead: true }))
-                );
-            });
-
-            const unsubscribeDeleted = notificationHubService.onNotificationDeleted((notificationId) => {
-                setNotifications(prev =>
-                    prev.filter(notification => notification.id !== notificationId)
-                );
-            });
-
-            // Отписываемся при закрытии
-            return () => {
-                unsubscribeNew();
-                unsubscribeRead();
-                unsubscribeAllRead();
-                unsubscribeDeleted();
-            };
         }
     }, [isOpen]);
 

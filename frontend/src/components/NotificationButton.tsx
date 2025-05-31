@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { notificationService } from '../services/notificationService';
 import { NotificationsList } from './NotificationsList';
+import { notificationHubService } from '../services/notificationHubService';
 
 export const NotificationButton: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -18,7 +19,20 @@ export const NotificationButton: React.FC = () => {
     useEffect(() => {
         loadUnreadCount();
         const interval = setInterval(loadUnreadCount, 30000); // Обновляем каждые 30 секунд
-        return () => clearInterval(interval);
+
+        // Подписка на SignalR события
+        const unsubNew = notificationHubService.onNotification(() => {
+            setUnreadCount(count => count + 1);
+        });
+        const unsubAllRead = notificationHubService.onAllNotificationsRead(() => {
+            setUnreadCount(0);
+        });
+
+        return () => {
+            clearInterval(interval);
+            unsubNew();
+            unsubAllRead();
+        };
     }, []);
 
     return (

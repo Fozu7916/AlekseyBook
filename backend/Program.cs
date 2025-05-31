@@ -25,7 +25,14 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.EnableDetailedErrors = true;
+    options.MaximumReceiveMessageSize = 102400; // 100 KB
+    options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+});
 
 builder.Services.AddAuthentication(options =>
 {
@@ -56,7 +63,8 @@ builder.Services.AddAuthentication(options =>
             
             if (!string.IsNullOrEmpty(accessToken) && 
                 (path.StartsWithSegments(Config.ChatHubUrl.Replace(Config.BackendUrl, "")) || 
-                 path.StartsWithSegments(Config.OnlineStatusHubUrl.Replace(Config.BackendUrl, ""))))
+                 path.StartsWithSegments(Config.OnlineStatusHubUrl.Replace(Config.BackendUrl, "")) ||
+                 path.StartsWithSegments("/hubs/notification")))
             {
                 context.Token = accessToken;
             }
