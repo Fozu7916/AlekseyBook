@@ -1,6 +1,6 @@
 import React from 'react';
 import { Notification } from '../types/notification';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface NotificationItemProps {
     notification: Notification;
@@ -74,9 +74,26 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     onMarkAsRead,
     onDelete
 }) => {
-    const handleClick = () => {
+    const navigate = useNavigate();
+    const handleClick = (e?: React.MouseEvent) => {
         if (!notification.isRead) {
             onMarkAsRead(notification.id);
+        }
+        if (notification.link) {
+            if (notification.link.startsWith('/messages')) {
+                navigate('/messages');
+            } else if (notification.link.startsWith('/friends')) {
+                navigate('/friends');
+            } else if (notification.link.startsWith('/profile')) {
+                navigate(notification.link);
+            } else if (notification.link.startsWith('/music')) {
+                navigate('/music');
+            } else if (notification.link.startsWith('/main')) {
+                navigate('/main');
+            } else {
+                navigate(notification.link);
+            }
+            if (e) e.preventDefault();
         }
     };
 
@@ -112,7 +129,7 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
     );
 
     return notification.link ? (
-        <Link to={notification.link}>{content}</Link>
+        <a href={notification.link} onClick={handleClick}>{content}</a>
     ) : (
         content
     );
