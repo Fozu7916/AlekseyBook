@@ -3,8 +3,8 @@ namespace backend
     public static class Config
     {
         // Base URLs
-        public static string FrontendUrl => "http://localhost:3000";
-        public static string BackendUrl => "http://localhost:5038";
+        public static string FrontendUrl => Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:3000";
+        public static string BackendUrl => Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http://localhost:5038";
         public static string ApiUrl => $"{BackendUrl}/api";
 
         // Hub URLs
