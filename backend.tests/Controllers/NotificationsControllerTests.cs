@@ -102,8 +102,10 @@ namespace backend.tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(okResult.Value);
             var response = JObject.FromObject(okResult.Value);
-            Assert.True(response["success"].Value<bool>());
+            Assert.NotNull(response["success"]);
+            Assert.True(response["success"]!.Value<bool>());
         }
 
         [Fact]
@@ -118,8 +120,10 @@ namespace backend.tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(okResult.Value);
             var response = JObject.FromObject(okResult.Value);
-            Assert.True(response["success"].Value<bool>());
+            Assert.NotNull(response["success"]);
+            Assert.True(response["success"]!.Value<bool>());
         }
 
         [Fact]
@@ -135,8 +139,10 @@ namespace backend.tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.NotNull(okResult.Value);
             var response = JObject.FromObject(okResult.Value);
-            Assert.True(response["success"].Value<bool>());
+            Assert.NotNull(response["success"]);
+            Assert.True(response["success"]!.Value<bool>());
         }
 
         [Fact]
@@ -189,8 +195,10 @@ namespace backend.tests.Controllers
             // Assert
             var badRequestResult = Assert.IsType<ActionResult<List<NotificationDto>>>(result);
             var returnValue = Assert.IsType<BadRequestObjectResult>(badRequestResult.Result);
+            Assert.NotNull(returnValue.Value);
             var response = JObject.FromObject(returnValue.Value);
-            Assert.Equal("Test error", response["message"].Value<string>());
+            Assert.NotNull(response["message"]);
+            Assert.Equal("Test error", response["message"]!.Value<string>());
         }
     }
 } 
