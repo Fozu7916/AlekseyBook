@@ -1,13 +1,17 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
-WORKDIR /app
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["backend/backend.csproj", "backend/"]
+RUN dotnet restore "backend/backend.csproj"
 COPY . .
-WORKDIR /app/backend
-RUN dotnet restore backend.sln && dotnet publish backend.csproj -c Release -o out
+WORKDIR "/src/backend"
+RUN dotnet build "backend.csproj" -c Release -o /app/build
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM build AS publish
+RUN dotnet publish "backend.csproj" -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=build-env /app/backend/out .
+COPY --from=publish /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
-ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
-ENTRYPOINT ["/usr/bin/dotnet", "/app/backend.dll"] 
+CMD ["dotnet", "backend.dll"] 
