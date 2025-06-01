@@ -1,3 +1,2 @@
-#!/bin/bash
-cd /app
-dotnet backend.dll 
+#!/bin/sh
+/usr/bin/dotnet /app/backend.dll 

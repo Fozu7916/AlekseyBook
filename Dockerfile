@@ -21,4 +21,4 @@ EXPOSE 8080
 
 # Делаем скрипт исполняемым и запускаем его
 RUN chmod +x /app/start.sh
-CMD ["/app/start.sh"] 
+ENTRYPOINT ["/app/start.sh"] 
