@@ -136,12 +136,6 @@ namespace backend.Controllers
             }
         }
 
-        [HttpGet("health")]
-        public IActionResult HealthCheck()
-        {
-            return Ok(new { status = "healthy" });
-        }
-
         private string GenerateJwtToken(User user)
         {
             var jwtKey = _configuration["Jwt:Key"];
