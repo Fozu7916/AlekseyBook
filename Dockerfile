@@ -4,7 +4,7 @@ COPY . .
 
 # Переходим в директорию бэкенда для сборки
 WORKDIR /app/backend
-RUN dotnet restore backend.sln && dotnet publish backend/backend.csproj -c Release -o out
+RUN dotnet restore backend.sln && dotnet publish backend.csproj -c Release -o out
 
 # Копируем результаты публикации в финальный образ
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
