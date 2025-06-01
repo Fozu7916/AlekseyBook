@@ -18,4 +18,5 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 # Открываем порт
 EXPOSE 8080
 
+# Запускаем приложение
 ENTRYPOINT ["dotnet", "backend.dll"] 
