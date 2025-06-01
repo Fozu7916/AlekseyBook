@@ -10,4 +10,4 @@ COPY --from=build-env /app/backend/out .
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 8080
-CMD ["dotnet", "backend.dll"] 
+ENTRYPOINT ["/usr/bin/dotnet", "/app/backend.dll"] 
