@@ -1,9 +1,16 @@
+const getBaseUrl = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.REACT_APP_API_URL || 'https://your-railway-app-url.railway.app';
+  }
+  return 'http://localhost:5038';
+};
+
 export const API_CONFIG = {
-    BASE_URL: 'http://localhost:5038',
-    API_URL: 'http://localhost:5038/api',
-    CHAT_HUB_URL: 'http://localhost:5038/chatHub',
-    ONLINE_STATUS_HUB_URL: 'http://localhost:5038/onlineStatusHub',
-    MEDIA_URL: 'http://localhost:5038'
+    BASE_URL: getBaseUrl(),
+    API_URL: `${getBaseUrl()}/api`,
+    CHAT_HUB_URL: `${getBaseUrl()}/chatHub`,
+    ONLINE_STATUS_HUB_URL: `${getBaseUrl()}/onlineStatusHub`,
+    MEDIA_URL: getBaseUrl()
 } as const;
 
 // Функция для получения полного URL медиа-файлов
