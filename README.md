@@ -1,6 +1,20 @@
 # AlekseyBook
 # ----------Проект закрыт на данный момент------------
 
+![image](https://github.com/user-attachments/assets/d89f93c7-bf23-439d-ac3e-b31f622d0c37)
+![image](https://github.com/user-attachments/assets/c00046e0-4184-476c-bc5e-1f8707dcd240)
+![image](https://github.com/user-attachments/assets/f64140b0-b0f5-4242-b57a-0dbe8cf7f8dd)
+![image](https://github.com/user-attachments/assets/c1000a09-bab7-4d57-88f7-7611ab0af391)
+![image](https://github.com/user-attachments/assets/8bf6b184-679b-40d4-9001-4771793289dc)
+![image](https://github.com/user-attachments/assets/582a979b-2fed-4546-89b1-99394207b547)
+![image](https://github.com/user-attachments/assets/b2357d12-2ba4-4566-a7d1-2da09bdd5b3a)
+![image](https://github.com/user-attachments/assets/02838099-6aa8-4a1e-bf14-ea225b16baae)
+
+
+
+
+
+
 ## 📋 Описание
 
 Этот проект - это веб-приложение, имитирующее функциональность Telegram/Vkontakte. Разработано с использованием современного стека технологий для обеспечения высокой производительности и удобства использования.
