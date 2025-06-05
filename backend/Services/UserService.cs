@@ -363,10 +363,11 @@ namespace backend.Services
                 Username = registerData.Username,
                 Email = registerData.Email,
                 PasswordHash = HashPassword(registerData.Password),
-                Status = "online",
+                Status = "Новый пользователь",
                 CreatedAt = DateTime.UtcNow,
                 LastLogin = DateTime.UtcNow,
-                IsVerified = false
+                IsVerified = false,
+                IsOnline = false
             };
 
             _context.Users.Add(user);

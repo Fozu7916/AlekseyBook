@@ -14,9 +14,34 @@ class OnlineStatusService {
   private maxReconnectAttempts = 5;
   private connectionPromise: Promise<void> | null = null;
   private isConnecting = false;
+  private activityInterval: NodeJS.Timeout | null = null;
+  private readonly ACTIVITY_UPDATE_INTERVAL = 60000; // 1 минута
 
   public getConnectionStatus(): boolean {
     return this.isConnected && this.connection?.state === 'Connected';
+  }
+
+  private startActivityUpdates() {
+    if (this.activityInterval) {
+      clearInterval(this.activityInterval);
+    }
+
+    this.activityInterval = setInterval(async () => {
+      try {
+        if (this.connection?.state === 'Connected') {
+          await this.connection.invoke('UpdateActivity');
+        }
+      } catch (err) {
+        logger.error('Ошибка при обновлении активности:', err);
+      }
+    }, this.ACTIVITY_UPDATE_INTERVAL);
+  }
+
+  private stopActivityUpdates() {
+    if (this.activityInterval) {
+      clearInterval(this.activityInterval);
+      this.activityInterval = null;
+    }
   }
 
   async connect() {
@@ -66,28 +91,34 @@ class OnlineStatusService {
       
       this.isConnected = true;
       this.reconnectAttempts = 0;
+      this.startActivityUpdates();
       logger.error('Подключение к хабу онлайн-статуса установлено');
 
       this.connection.onreconnecting(() => {
         logger.error('Переподключение к хабу онлайн-статуса...');
         this.isConnected = false;
+        this.stopActivityUpdates();
       });
 
       this.connection.onreconnected(async () => {
         logger.error('Переподключение к хабу онлайн-статуса выполнено успешно');
         this.isConnected = true;
         this.reconnectAttempts = 0;
+        this.startActivityUpdates();
+        await this.getOnlineUsers();
       });
 
       this.connection.onclose(() => {
         logger.error('Соединение с хабом онлайн-статуса закрыто');
         this.isConnected = false;
+        this.stopActivityUpdates();
         this.scheduleReconnect();
       });
 
     } catch (err) {
       logger.error('Ошибка при подключении к хабу онлайн-статуса:', err);
       this.isConnected = false;
+      this.stopActivityUpdates();
       this.scheduleReconnect();
       throw err;
     } finally {
@@ -113,6 +144,7 @@ class OnlineStatusService {
 
   async disconnect() {
     try {
+      this.stopActivityUpdates();
       if (this.connection) {
         this.isConnected = false;
         await this.connection.stop();
