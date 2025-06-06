@@ -109,11 +109,22 @@ try
         Password = mysqlPassword,
         AllowUserVariables = true,
         AllowPublicKeyRetrieval = true,
-        SslMode = MySqlSslMode.Required,
+        SslMode = MySqlSslMode.VerifyCA,
         ConnectionTimeout = 180,
         DefaultCommandTimeout = 180,
         MaximumPoolSize = 100,
-        MinimumPoolSize = 10
+        MinimumPoolSize = 10,
+        Pooling = true,
+        TreatTinyAsBoolean = true,
+        UseCompression = true,
+        AutoEnlist = true,
+        ConnectionLifeTime = 300,
+        ConnectionReset = true,
+        PersistSecurityInfo = false,
+        AllowLoadLocalInfile = false,
+        UseAffectedRows = true,
+        IgnorePrepare = false,
+        DeferConnectionReset = true
     };
 
     connectionString = mySqlOptions.ConnectionString;
@@ -127,9 +138,9 @@ try
     {
         try
         {
-            connection.Open();
+            await connection.OpenAsync();
             logger.LogInformation("Test connection successful!");
-            connection.Close();
+            await connection.CloseAsync();
         }
         catch (Exception ex)
         {

@@ -1,21 +1,23 @@
+FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+# Установка сертификатов SSL
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
+
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-WORKDIR /app
-
+WORKDIR /src
+COPY ["backend.csproj", "."]
+RUN dotnet restore "./backend.csproj"
 COPY . .
-RUN dotnet restore
-RUN dotnet publish -c Release -o out
+WORKDIR "/src/."
+RUN dotnet build "backend.csproj" -c Release -o /app/build
 
-FROM mcr.microsoft.com/dotnet/aspnet:7.0
+FROM build AS publish
+RUN dotnet publish "backend.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
 WORKDIR /app
-COPY --from=build /app/out .
-
-ENV ASPNETCORE_URLS=http://+:8080
-ENV MYSQL_DATABASE=railway
-ENV MYSQLUSER=root
-ENV MYSQL_ROOT_PASSWORD=VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww
-ENV RAILWAY_TCP_PROXY_DOMAIN=containers-us-west-207.railway.app
-ENV RAILWAY_TCP_PROXY_PORT=6974
-
-EXPOSE 8080
-
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "backend.dll"] 
