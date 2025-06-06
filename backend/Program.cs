@@ -157,7 +157,18 @@ try
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     logger.LogInformation("Attempting to connect to database...");
-    logger.LogInformation($"Connection string being used: {connectionString.Replace(password, "*****")}");
+    // Маскируем пароль в строке подключения для логов
+    var maskedConnectionString = connectionString;
+    if (connectionString.Contains("Password="))
+    {
+        var passwordPart = connectionString.Split(';')
+            .FirstOrDefault(x => x.StartsWith("Password="));
+        if (passwordPart != null)
+        {
+            maskedConnectionString = connectionString.Replace(passwordPart, "Password=*****");
+        }
+    }
+    logger.LogInformation($"Connection string being used: {maskedConnectionString}");
     
     await dbContext.Database.OpenConnectionAsync();
     logger.LogInformation("Database connection successful");
