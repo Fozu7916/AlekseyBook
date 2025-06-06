@@ -96,7 +96,7 @@ try
     var user = userInfo[0];
     var password = userInfo[1];
 
-    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;ConnectionTimeout=60;DefaultCommandTimeout=60;";
+    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;";
     logger.LogInformation($"Parsed connection info: Server={host};Port={port};Database={database};User={user}");
 }
 catch (Exception ex)

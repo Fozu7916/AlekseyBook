@@ -10,8 +10,8 @@ WORKDIR /app
 COPY --from=build /app/out .
 
 ENV ASPNETCORE_URLS=http://+:8080
-ENV MYSQL_HOST=roundhouse.proxy.rlwy.net
-ENV MYSQL_PORT=33306
+ENV MYSQL_HOST=mysql-xje1.railway.internal
+ENV MYSQL_PORT=3306
 ENV MYSQL_DATABASE=railway
 ENV MYSQL_USER=root
 ENV MYSQL_PASSWORD=VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww
