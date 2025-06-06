@@ -84,46 +84,49 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Получаем строку подключения
-var mysqlDatabase = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
-var mysqlUser = Environment.GetEnvironmentVariable("MYSQLUSER") ?? "root";
-var mysqlPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww";
-var mysqlHost = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_DOMAIN");
-var mysqlPort = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_PORT") ?? "3306";
+// Получаем строку подключения из MYSQL_URL
+var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
+logger.LogInformation($"Raw MYSQL_URL: {mysqlUrl?.Replace(mysqlUrl.Split(':')[2].Split('@')[0], "*****")}");
 
-if (string.IsNullOrEmpty(mysqlHost))
+if (string.IsNullOrEmpty(mysqlUrl))
 {
     // Fallback для локальной разработки
-    mysqlHost = "localhost";
-    logger.LogWarning("RAILWAY_TCP_PROXY_DOMAIN не установлен, используется localhost");
+    mysqlUrl = $"mysql://root:{Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD")}@localhost:3306/railway";
+    logger.LogWarning("MYSQL_URL не установлен, используется локальный URL");
 }
 
-logger.LogInformation($"Database config: Host={mysqlHost}, Port={mysqlPort}, Database={mysqlDatabase}, User={mysqlUser}");
-
-string connectionString;
 try
 {
-    connectionString = $"Server={mysqlHost};Port={mysqlPort};Database={mysqlDatabase};User={mysqlUser};Password={mysqlPassword};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
-    logger.LogInformation($"Parsed connection info: Server={mysqlHost};Port={mysqlPort};Database={mysqlDatabase};User={mysqlUser}");
+    var uri = new Uri(mysqlUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    var host = uri.Host;
+    var port = uri.Port;
+    var database = uri.AbsolutePath.TrimStart('/');
+    var user = userInfo[0];
+    var password = userInfo[1];
+
+    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
+    
+    // Маскируем пароль для логов
+    var maskedConnectionString = connectionString;
+    if (connectionString.Contains("Password="))
+    {
+        var passwordPart = connectionString.Split(';')
+            .FirstOrDefault(x => x.StartsWith("Password="));
+        if (passwordPart != null)
+        {
+            maskedConnectionString = connectionString.Replace(passwordPart, "Password=*****");
+        }
+    }
+    
+    logger.LogInformation($"Parsed connection info: Server={host};Port={port};Database={database};User={user}");
+    logger.LogInformation($"Connection string being used: {maskedConnectionString}");
 }
 catch (Exception ex)
 {
     logger.LogError($"Error parsing MYSQL_URL: {ex.Message}");
     throw;
 }
-
-// Маскируем пароль в строке подключения для логов
-var maskedConnectionString = connectionString;
-if (connectionString.Contains("Password="))
-{
-    var passwordPart = connectionString.Split(';')
-        .FirstOrDefault(x => x.StartsWith("Password="));
-    if (passwordPart != null)
-    {
-        maskedConnectionString = connectionString.Replace(passwordPart, "Password=*****");
-    }
-}
-logger.LogInformation($"Connection string being used: {maskedConnectionString}");
 
 // Добавляем DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

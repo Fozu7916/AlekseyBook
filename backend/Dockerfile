@@ -10,13 +10,7 @@ WORKDIR /app
 COPY --from=build /app/out .
 
 ENV ASPNETCORE_URLS=http://+:8080
-ENV MYSQL_DATABASE=railway
-ENV MYSQLUSER=root
-ENV MYSQL_ROOT_PASSWORD=VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww
-
-# Эти переменные будут установлены Railway автоматически
-# ENV RAILWAY_TCP_PROXY_DOMAIN=
-# ENV RAILWAY_TCP_PROXY_PORT=
+ENV MYSQL_URL="mysql://root:VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww@roundhouse.proxy.rlwy.net:33306/railway"
 
 EXPOSE 8080
 
