@@ -26,10 +26,13 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(builder =>
     {
-        builder.WithOrigins(Config.FrontendUrl)
-               .AllowAnyMethod()
-               .AllowAnyHeader()
-               .AllowCredentials();
+        builder.WithOrigins(
+                "http://localhost:3000",
+                "https://alekseybook.netlify.app"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
@@ -96,7 +99,7 @@ try
     var user = userInfo[0];
     var password = userInfo[1];
 
-    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;";
+    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
     logger.LogInformation($"Parsed connection info: Server={host};Port={port};Database={database};User={user}");
 }
 catch (Exception ex)
@@ -154,17 +157,21 @@ try
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     logger.LogInformation("Attempting to connect to database...");
+    logger.LogInformation($"Connection string being used: {connectionString.Replace(password, "*****")}");
+    
     await dbContext.Database.OpenConnectionAsync();
     logger.LogInformation("Database connection successful");
     await dbContext.Database.CloseConnectionAsync();
     
     // Применяем миграции
+    logger.LogInformation("Attempting to apply migrations...");
     await dbContext.Database.MigrateAsync();
     logger.LogInformation("Database migrations applied successfully");
 }
 catch (Exception ex)
 {
     logger.LogError($"Database connection error: {ex.Message}");
+    logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
     logger.LogError($"Connection string used (masked): {connectionString.Replace(connectionString.Split(';').FirstOrDefault(x => x.StartsWith("Password=")) ?? "", "Password=*****")}");
     throw;
 }

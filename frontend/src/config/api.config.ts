@@ -1,6 +1,6 @@
 const getBaseUrl = () => {
   if (process.env.NODE_ENV === 'production') {
-    return process.env.REACT_APP_API_URL || 'https://your-railway-app-url.railway.app';
+    return process.env.REACT_APP_API_URL || 'https://alekseybook-production.up.railway.app';
   }
   return 'http://localhost:5038';
 };
