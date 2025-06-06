@@ -88,8 +88,15 @@ builder.Services.AddAuthentication(options =>
 var mysqlDatabase = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
 var mysqlUser = Environment.GetEnvironmentVariable("MYSQLUSER") ?? "root";
 var mysqlPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww";
-var mysqlHost = Environment.GetEnvironmentVariable("MYSQLHOST") ?? Environment.GetEnvironmentVariable("RAILWAY_PRIVATE_DOMAIN");
-var mysqlPort = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
+var mysqlHost = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_DOMAIN");
+var mysqlPort = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_PORT") ?? "3306";
+
+if (string.IsNullOrEmpty(mysqlHost))
+{
+    // Fallback для локальной разработки
+    mysqlHost = "localhost";
+    logger.LogWarning("RAILWAY_TCP_PROXY_DOMAIN не установлен, используется localhost");
+}
 
 logger.LogInformation($"Database config: Host={mysqlHost}, Port={mysqlPort}, Database={mysqlDatabase}, User={mysqlUser}");
 
