@@ -86,7 +86,7 @@ builder.Services.AddAuthentication(options =>
 
 // Получаем строку подключения из MYSQL_URL
 var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
-logger.LogInformation($"Raw MYSQL_URL: {mysqlUrl?.Replace(mysqlUrl.Split(':')[2].Split('@')[0], "*****")}");
+logger.LogInformation($"Raw MYSQL_URL: {mysqlUrl?.Replace(mysqlUrl?.Split(':')[2].Split('@')[0] ?? "", "*****")}");
 
 if (string.IsNullOrEmpty(mysqlUrl))
 {
@@ -94,6 +94,9 @@ if (string.IsNullOrEmpty(mysqlUrl))
     mysqlUrl = $"mysql://root:{Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD")}@localhost:3306/railway";
     logger.LogWarning("MYSQL_URL не установлен, используется локальный URL");
 }
+
+string connectionString;
+string maskedConnectionString;
 
 try
 {
@@ -108,7 +111,7 @@ try
     connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
     
     // Маскируем пароль для логов
-    var maskedConnectionString = connectionString;
+    maskedConnectionString = connectionString;
     if (connectionString.Contains("Password="))
     {
         var passwordPart = connectionString.Split(';')
