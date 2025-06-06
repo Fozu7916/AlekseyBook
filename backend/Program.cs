@@ -86,9 +86,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Получаем строку подключения из переменных окружения
-var mysqlHost = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_DOMAIN") ?? "containers-us-west-207.railway.app";
-var mysqlPort = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_PORT") ?? "6974";
+// Получаем параметры подключения из переменных окружения
+var mysqlHost = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_DOMAIN") ?? "localhost";
+var mysqlPort = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_PORT") ?? "3306";
 var mysqlDatabase = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
 var mysqlUser = Environment.GetEnvironmentVariable("MYSQLUSER") ?? "root";
 var mysqlPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww";
