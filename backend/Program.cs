@@ -73,32 +73,43 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Получаем строку подключения
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (string.IsNullOrEmpty(connectionString))
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
-else
-{
-    // Преобразуем URL в формат строки подключения MySQL
-    var uri = new Uri(connectionString);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Server={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};User={userInfo[0]};Password={userInfo[1]};";
-}
+// Получаем строку подключения из переменных окружения
+var host = Environment.GetEnvironmentVariable("MYSQL_HOST") ?? "localhost";
+var port = Environment.GetEnvironmentVariable("MYSQL_PORT") ?? "3306";
+var database = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
+var user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
+var password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "root";
 
+var connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;";
+
+var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
+logger.LogInformation($"Database connection info: Server={host};Port={port};Database={database};User={user}");
+
+// Добавляем DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseMySql(
-        connectionString,
-        ServerVersion.AutoDetect(connectionString),
-        mysqlOptions =>
-        {
-            mysqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 10,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-        }
-    ));
+{
+    try 
+    {
+        options.UseMySql(
+            connectionString,
+            ServerVersion.AutoDetect(connectionString),
+            mysqlOptions =>
+            {
+                mysqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 10,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null
+                );
+            }
+        );
+        logger.LogInformation("Successfully configured database connection");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError($"Error configuring database: {ex.Message}");
+        throw;
+    }
+});
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
