@@ -12,6 +12,13 @@ using backend;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Настройка логирования
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
+var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
+
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
@@ -82,7 +89,6 @@ var password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "root";
 
 var connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;";
 
-var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
 logger.LogInformation($"Database connection info: Server={host};Port={port};Database={database};User={user}");
 
 // Добавляем DbContext
@@ -123,19 +129,26 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+// Проверяем подключение к базе данных
+try
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        context.Database.EnsureCreated();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while creating the database.");
-    }
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    logger.LogInformation("Attempting to connect to database...");
+    await dbContext.Database.OpenConnectionAsync();
+    logger.LogInformation("Database connection successful");
+    await dbContext.Database.CloseConnectionAsync();
+    
+    // Применяем миграции
+    await dbContext.Database.MigrateAsync();
+    logger.LogInformation("Database migrations applied successfully");
+}
+catch (Exception ex)
+{
+    logger.LogError($"Database connection error: {ex.Message}");
+    logger.LogError($"Connection string used (masked): {connectionString.Replace(connectionString.Split(';').FirstOrDefault(x => x.StartsWith("Password=")) ?? "", "Password=*****")}");
+    throw;
 }
 
 if (app.Environment.IsDevelopment())
