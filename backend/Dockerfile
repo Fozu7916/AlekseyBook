@@ -10,7 +10,7 @@ WORKDIR /app
 COPY --from=build /app/out .
 
 ENV ASPNETCORE_URLS=http://+:8080
-ENV MYSQL_URL="mysql://root:VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww@roundhouse.proxy.rlwy.net:33306/railway"
+ENV MYSQL_URL="mysql://root:VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww@containers-us-west-207.railway.app:6974/railway"
 
 EXPOSE 8080
 

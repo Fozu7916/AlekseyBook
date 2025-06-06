@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using backend;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using MySql.Data.MySqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -136,9 +137,40 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     try 
     {
+        var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
+        logger.LogInformation($"Using MySQL server version: {serverVersion.ToString()}");
+
+        var mySqlOptions = new MySqlConnectionStringBuilder(connectionString)
+        {
+            ConnectionTimeout = 180,
+            DefaultCommandTimeout = 180,
+            MaximumPoolSize = 100,
+            MinimumPoolSize = 10,
+            AllowUserVariables = true,
+            AllowPublicKeyRetrieval = true,
+            SslMode = MySqlSslMode.Preferred
+        };
+
+        logger.LogInformation($"Testing connection with MySqlConnectionStringBuilder...");
+        using (var connection = new MySqlConnection(mySqlOptions.ConnectionString))
+        {
+            try
+            {
+                connection.Open();
+                logger.LogInformation("Test connection successful!");
+                connection.Close();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Test connection failed: {ex.Message}");
+                logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
+                throw;
+            }
+        }
+
         options.UseMySql(
-            connectionString,
-            ServerVersion.AutoDetect(connectionString),
+            mySqlOptions.ConnectionString,
+            serverVersion,
             mysqlOptions =>
             {
                 mysqlOptions.EnableRetryOnFailure(
@@ -146,6 +178,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                     maxRetryDelay: TimeSpan.FromSeconds(30),
                     errorNumbersToAdd: null
                 );
+                mysqlOptions.CommandTimeout((int)TimeSpan.FromMinutes(3).TotalSeconds);
+                mysqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             }
         );
         logger.LogInformation("Successfully configured database connection");
@@ -153,13 +187,20 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     catch (Exception ex)
     {
         logger.LogError($"Error configuring database: {ex.Message}");
+        logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
         throw;
     }
 });
 
-// Добавляем health checks
+// Добавляем health checks с более подробной диагностикой
 builder.Services.AddHealthChecks()
-    .AddMySql(connectionString, name: "database", failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
+    .AddMySql(
+        connectionString,
+        name: "database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: new[] { "db", "mysql", "ready" },
+        timeout: TimeSpan.FromSeconds(30)
+    );
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
