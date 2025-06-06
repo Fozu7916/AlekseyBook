@@ -81,16 +81,29 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Получаем строку подключения из переменных окружения
-var host = Environment.GetEnvironmentVariable("MYSQL_HOST") ?? "localhost";
-var port = Environment.GetEnvironmentVariable("MYSQL_PORT") ?? "3306";
-var database = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
-var user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
-var password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "root";
+// Получаем строку подключения
+var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL") ?? "mysql://root:VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww@mysql-xje1.railway.internal:3306/railway";
+logger.LogInformation($"MYSQL_URL: {mysqlUrl}");
 
-var connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;ConnectionTimeout=60;DefaultCommandTimeout=60;";
+string connectionString;
+try
+{
+    var uri = new Uri(mysqlUrl);
+    var userInfo = uri.UserInfo.Split(':');
+    var host = uri.Host;
+    var port = uri.Port;
+    var database = uri.AbsolutePath.TrimStart('/');
+    var user = userInfo[0];
+    var password = userInfo[1];
 
-logger.LogInformation($"Database connection info: Server={host};Port={port};Database={database};User={user}");
+    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;ConnectionTimeout=60;DefaultCommandTimeout=60;";
+    logger.LogInformation($"Parsed connection info: Server={host};Port={port};Database={database};User={user}");
+}
+catch (Exception ex)
+{
+    logger.LogError($"Error parsing MYSQL_URL: {ex.Message}");
+    throw;
+}
 
 // Добавляем DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -120,7 +133,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Добавляем health checks
 builder.Services.AddHealthChecks()
-    .AddMySql(connectionString, name: "database", failureStatus: HealthStatus.Unhealthy);
+    .AddMySql(connectionString, name: "database", failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
