@@ -86,50 +86,63 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Получаем строку подключения из MYSQL_URL
-var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL");
-logger.LogInformation($"Raw MYSQL_URL: {mysqlUrl?.Replace(mysqlUrl?.Split(':')[2].Split('@')[0] ?? "", "*****")}");
+// Получаем строку подключения из переменных окружения
+var mysqlHost = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_DOMAIN") ?? "containers-us-west-207.railway.app";
+var mysqlPort = Environment.GetEnvironmentVariable("RAILWAY_TCP_PROXY_PORT") ?? "6974";
+var mysqlDatabase = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
+var mysqlUser = Environment.GetEnvironmentVariable("MYSQLUSER") ?? "root";
+var mysqlPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww";
 
-if (string.IsNullOrEmpty(mysqlUrl))
-{
-    // Fallback для локальной разработки
-    mysqlUrl = $"mysql://root:{Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD")}@localhost:3306/railway";
-    logger.LogWarning("MYSQL_URL не установлен, используется локальный URL");
-}
+logger.LogInformation($"Database config: Host={mysqlHost}, Port={mysqlPort}, Database={mysqlDatabase}, User={mysqlUser}");
 
 string connectionString;
 string maskedConnectionString;
 
 try
 {
-    var uri = new Uri(mysqlUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    var host = uri.Host;
-    var port = uri.Port;
-    var database = uri.AbsolutePath.TrimStart('/');
-    var user = userInfo[0];
-    var password = userInfo[1];
-
-    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
-    
-    // Маскируем пароль для логов
-    maskedConnectionString = connectionString;
-    if (connectionString.Contains("Password="))
+    var mySqlOptions = new MySqlConnectionStringBuilder
     {
-        var passwordPart = connectionString.Split(';')
-            .FirstOrDefault(x => x.StartsWith("Password="));
-        if (passwordPart != null)
+        Server = mysqlHost,
+        Port = uint.Parse(mysqlPort),
+        Database = mysqlDatabase,
+        UserID = mysqlUser,
+        Password = mysqlPassword,
+        AllowUserVariables = true,
+        AllowPublicKeyRetrieval = true,
+        SslMode = MySqlSslMode.Required,
+        ConnectionTimeout = 180,
+        DefaultCommandTimeout = 180,
+        MaximumPoolSize = 100,
+        MinimumPoolSize = 10
+    };
+
+    connectionString = mySqlOptions.ConnectionString;
+    maskedConnectionString = connectionString.Replace(mysqlPassword, "*****");
+    
+    logger.LogInformation($"Connection string being used: {maskedConnectionString}");
+    
+    // Тестируем подключение
+    logger.LogInformation("Testing connection with MySqlConnectionStringBuilder...");
+    using (var connection = new MySqlConnection(connectionString))
+    {
+        try
         {
-            maskedConnectionString = connectionString.Replace(passwordPart, "Password=*****");
+            connection.Open();
+            logger.LogInformation("Test connection successful!");
+            connection.Close();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError($"Test connection failed: {ex.Message}");
+            logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
+            throw;
         }
     }
-    
-    logger.LogInformation($"Parsed connection info: Server={host};Port={port};Database={database};User={user}");
-    logger.LogInformation($"Connection string being used: {maskedConnectionString}");
 }
 catch (Exception ex)
 {
-    logger.LogError($"Error parsing MYSQL_URL: {ex.Message}");
+    logger.LogError($"Error configuring connection string: {ex.Message}");
+    logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
     throw;
 }
 
@@ -141,36 +154,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         var serverVersion = new MySqlServerVersion(new Version(8, 0, 0));
         logger.LogInformation($"Using MySQL server version: {serverVersion.ToString()}");
 
-        var mySqlOptions = new MySqlConnectionStringBuilder(connectionString)
-        {
-            ConnectionTimeout = 180,
-            DefaultCommandTimeout = 180,
-            MaximumPoolSize = 100,
-            MinimumPoolSize = 10,
-            AllowUserVariables = true,
-            AllowPublicKeyRetrieval = true,
-            SslMode = MySqlSslMode.Preferred
-        };
-
-        logger.LogInformation($"Testing connection with MySqlConnectionStringBuilder...");
-        using (var connection = new MySqlConnection(mySqlOptions.ConnectionString))
-        {
-            try
-            {
-                connection.Open();
-                logger.LogInformation("Test connection successful!");
-                connection.Close();
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"Test connection failed: {ex.Message}");
-                logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
-                throw;
-            }
-        }
-
         options.UseMySql(
-            mySqlOptions.ConnectionString,
+            connectionString,
             serverVersion,
             mysqlOptions =>
             {
