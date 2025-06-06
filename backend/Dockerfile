@@ -20,4 +20,12 @@ RUN dotnet publish "backend.csproj" -c Release -o /app/publish /p:UseAppHost=fal
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+# Переменные окружения для MySQL
+ENV RAILWAY_TCP_PROXY_DOMAIN=containers-us-west-207.railway.app
+ENV RAILWAY_TCP_PROXY_PORT=6974
+ENV MYSQL_DATABASE=railway
+ENV MYSQLUSER=root
+ENV MYSQL_ROOT_PASSWORD=VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww
+
 ENTRYPOINT ["dotnet", "backend.dll"] 
