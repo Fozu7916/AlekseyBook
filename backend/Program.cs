@@ -85,28 +85,38 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Получаем строку подключения
-var mysqlUrl = Environment.GetEnvironmentVariable("MYSQL_URL") ?? "mysql://root:VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww@mysql-xje1.railway.internal:3306/railway";
-logger.LogInformation($"MYSQL_URL: {mysqlUrl}");
+var mysqlDatabase = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway";
+var mysqlUser = Environment.GetEnvironmentVariable("MYSQLUSER") ?? "root";
+var mysqlPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "VWnQlbCWEFNuXEVuNTCZFTgkAPfDCRww";
+var mysqlHost = Environment.GetEnvironmentVariable("MYSQLHOST") ?? Environment.GetEnvironmentVariable("RAILWAY_PRIVATE_DOMAIN");
+var mysqlPort = Environment.GetEnvironmentVariable("MYSQLPORT") ?? "3306";
+
+logger.LogInformation($"Database config: Host={mysqlHost}, Port={mysqlPort}, Database={mysqlDatabase}, User={mysqlUser}");
 
 string connectionString;
 try
 {
-    var uri = new Uri(mysqlUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    var host = uri.Host;
-    var port = uri.Port;
-    var database = uri.AbsolutePath.TrimStart('/');
-    var user = userInfo[0];
-    var password = userInfo[1];
-
-    connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
-    logger.LogInformation($"Parsed connection info: Server={host};Port={port};Database={database};User={user}");
+    connectionString = $"Server={mysqlHost};Port={mysqlPort};Database={mysqlDatabase};User={mysqlUser};Password={mysqlPassword};AllowPublicKeyRetrieval=true;SslMode=Preferred;TreatTinyAsBoolean=true;ConnectionTimeout=180;DefaultCommandTimeout=180;MaximumPoolSize=100;MinimumPoolSize=10;Pooling=true;";
+    logger.LogInformation($"Parsed connection info: Server={mysqlHost};Port={mysqlPort};Database={mysqlDatabase};User={mysqlUser}");
 }
 catch (Exception ex)
 {
     logger.LogError($"Error parsing MYSQL_URL: {ex.Message}");
     throw;
 }
+
+// Маскируем пароль в строке подключения для логов
+var maskedConnectionString = connectionString;
+if (connectionString.Contains("Password="))
+{
+    var passwordPart = connectionString.Split(';')
+        .FirstOrDefault(x => x.StartsWith("Password="));
+    if (passwordPart != null)
+    {
+        maskedConnectionString = connectionString.Replace(passwordPart, "Password=*****");
+    }
+}
+logger.LogInformation($"Connection string being used: {maskedConnectionString}");
 
 // Добавляем DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -157,19 +167,6 @@ try
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     
     logger.LogInformation("Attempting to connect to database...");
-    // Маскируем пароль в строке подключения для логов
-    var maskedConnectionString = connectionString;
-    if (connectionString.Contains("Password="))
-    {
-        var passwordPart = connectionString.Split(';')
-            .FirstOrDefault(x => x.StartsWith("Password="));
-        if (passwordPart != null)
-        {
-            maskedConnectionString = connectionString.Replace(passwordPart, "Password=*****");
-        }
-    }
-    logger.LogInformation($"Connection string being used: {maskedConnectionString}");
-    
     await dbContext.Database.OpenConnectionAsync();
     logger.LogInformation("Database connection successful");
     await dbContext.Database.CloseConnectionAsync();
@@ -183,7 +180,7 @@ catch (Exception ex)
 {
     logger.LogError($"Database connection error: {ex.Message}");
     logger.LogError($"Inner exception: {ex.InnerException?.Message ?? "No inner exception"}");
-    logger.LogError($"Connection string used (masked): {connectionString.Replace(connectionString.Split(';').FirstOrDefault(x => x.StartsWith("Password=")) ?? "", "Password=*****")}");
+    logger.LogError($"Connection string used (masked): {maskedConnectionString}");
     throw;
 }
 
