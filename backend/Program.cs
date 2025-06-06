@@ -9,6 +9,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using backend;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,7 +88,7 @@ var database = Environment.GetEnvironmentVariable("MYSQL_DATABASE") ?? "railway"
 var user = Environment.GetEnvironmentVariable("MYSQL_USER") ?? "root";
 var password = Environment.GetEnvironmentVariable("MYSQL_PASSWORD") ?? "root";
 
-var connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;";
+var connectionString = $"Server={host};Port={port};Database={database};User={user};Password={password};AllowPublicKeyRetrieval=true;SslMode=Required;ConnectionTimeout=60;DefaultCommandTimeout=60;";
 
 logger.LogInformation($"Database connection info: Server={host};Port={port};Database={database};User={user}");
 
@@ -116,6 +117,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         throw;
     }
 });
+
+// Добавляем health checks
+builder.Services.AddHealthChecks()
+    .AddMySql(connectionString, name: "database", failureStatus: HealthStatus.Unhealthy);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
@@ -191,6 +196,9 @@ app.MapControllers();
 app.MapHub<ChatHub>(Config.ChatHubUrl.Replace(Config.BackendUrl, ""));
 app.MapHub<OnlineStatusHub>(Config.OnlineStatusHubUrl.Replace(Config.BackendUrl, ""));
 app.MapHub<NotificationHub>("/hubs/notification");
+
+// Добавляем endpoint для health check
+app.MapHealthChecks("/api/auth/health");
 
 app.Run();
 
