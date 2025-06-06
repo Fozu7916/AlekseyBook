@@ -11,6 +11,7 @@ using backend.Hubs;
 using backend;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MySql.Data.MySqlClient;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
