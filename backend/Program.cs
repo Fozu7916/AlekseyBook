@@ -122,9 +122,7 @@ try
         ConnectionReset = true,
         PersistSecurityInfo = false,
         AllowLoadLocalInfile = false,
-        UseAffectedRows = true,
-        IgnorePrepare = false,
-        DeferConnectionReset = true
+        UseAffectedRows = true
     };
 
     connectionString = mySqlOptions.ConnectionString;
