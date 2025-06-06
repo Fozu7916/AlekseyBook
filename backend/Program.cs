@@ -9,6 +9,7 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.SignalR;
 using backend.Hubs;
 using backend;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,32 +74,75 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Настройка логирования
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
+var logger = LoggerFactory.Create(config =>
+{
+    config.AddConsole();
+    config.SetMinimumLevel(LogLevel.Information);
+}).CreateLogger("Program");
+
 // Получаем строку подключения
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+logger.LogInformation($"DATABASE_URL from env: {connectionString ?? "not set"}");
+
 if (string.IsNullOrEmpty(connectionString))
 {
     connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    logger.LogInformation($"Using default connection string: {connectionString}");
 }
 else
 {
-    // Преобразуем URL в формат строки подключения MySQL
-    var uri = new Uri(connectionString);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Server={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};User={userInfo[0]};Password={userInfo[1]};";
+    try
+    {
+        // Преобразуем URL в формат строки подключения MySQL
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':');
+        connectionString = $"Server={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};User={userInfo[0]};Password={userInfo[1]};AllowPublicKeyRetrieval=true;";
+        logger.LogInformation($"Converted connection string (masked): Server={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};User={userInfo[0]};Password=*****");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError($"Error parsing DATABASE_URL: {ex.Message}");
+        throw;
+    }
 }
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseMySql(
-        connectionString,
-        ServerVersion.AutoDetect(connectionString),
-        mysqlOptions =>
-        {
-            mysqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 10,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-        }
-    ));
+try
+{
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    {
+        options.UseMySql(
+            connectionString,
+            ServerVersion.AutoDetect(connectionString),
+            mysqlOptions =>
+            {
+                mysqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 10,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+            }
+        );
+    });
+
+    // Пробуем создать и проверить подключение к базе данных
+    using var scope = builder.Services.BuildServiceProvider().CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    
+    logger.LogInformation("Attempting to connect to database...");
+    context.Database.OpenConnection();
+    logger.LogInformation("Database connection successful");
+    context.Database.CloseConnection();
+}
+catch (Exception ex)
+{
+    logger.LogError($"Database connection error: {ex.Message}");
+    logger.LogError($"Connection string used (masked): {connectionString.Replace(connectionString.Split(';').FirstOrDefault(x => x.StartsWith("Password=")) ?? "", "Password=*****")}");
+    throw;
+}
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFriendService, FriendService>();
