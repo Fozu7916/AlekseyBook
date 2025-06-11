@@ -180,7 +180,7 @@ namespace backend.Hubs
             }
         }
 
-        public Task UpdateActivity()
+        public async Task UpdateActivity()
         {
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
@@ -190,7 +190,6 @@ namespace backend.Hubs
                     _lastActivity[userId] = DateTime.UtcNow;
                 }
             }
-            return Task.CompletedTask;
         }
 
         public async Task GetOnlineUsers()
