@@ -1,6 +1,5 @@
 # AlekseyBook
-# ----------Проект закрыт на данный момент------------
-## разработка новых функций не ведётся, сайт не работает.
+📋 Status: Project successfully completed (Archived MVP). The live demo is currently offline, but you can easily spin it up locally by following the installation guide below.
 ![image](https://github.com/user-attachments/assets/d89f93c7-bf23-439d-ac3e-b31f622d0c37)
 ![image](https://github.com/user-attachments/assets/c00046e0-4184-476c-bc5e-1f8707dcd240)
 ![image](https://github.com/user-attachments/assets/f64140b0-b0f5-4242-b57a-0dbe8cf7f8dd)
