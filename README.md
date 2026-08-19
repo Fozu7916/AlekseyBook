@@ -1,141 +1,141 @@
-# AlekseyBook
+#AlekseyBook
 📋 Status: Project successfully completed (Archived MVP). The live demo is currently offline, but you can easily spin it up locally by following the installation guide below.
 ![image](https://github.com/user-attachments/assets/d89f93c7-bf23-439d-ac3e-b31f622d0c37)
 ![image](https://github.com/user-attachments/assets/c00046e0-4184-476c-bc5e-1f8707dcd240)
 ![image](https://github.com/user-attachments/assets/f64140b0-b0f5-4242-b57a-0dbe8cf7f8dd)
 ![image](https://github.com/user-attachments/assets/c1000a09-bab7-4d57-88f7-7611ab0af391)
-![image](https://github.com/user-attachments/assets/8bf6b184-679b-40d4-9001-4771793289dc)
+![ima ge](https://github.com/user-attachments/assets/8bf6b184-679b-40d4-9001-4771793289dc)
 ![image](https://github.com/user-attachments/assets/582a979b-2fed-4546-89b1-99394207b547)
 ![image](https://github.com/user-attachments/assets/b2357d12-2ba4-4566-a7d1-2da09bdd5b3a)
 ![image](https://github.com/user-attachments/assets/02838099-6aa8-4a1e-bf14-ea225b16baae)
 
-Социальная сеть с современным интерфейсом и расширенным функционалом.
+Social A network with a modern interface and advanced functionality.
 
-## Основные функции
+## Main Features
 
-- 👥 Профили пользователей
-- 💬 Чат в реальном времени
-- 👋 Система друзей
-- 📝 Публикация постов
-- 💭 Комментарии и лайки
-- 🟢 Отслеживание онлайн-статуса
-- 🔔 Уведомления
+- 👥 User Profiles
+- 💬 Real-Time Chat
+- 👋 Friends System
+- 📝 Posting
+- 💭 Comments and Likes
+- 🟢 Online Status Tracking
+- 🔔 Notifications
 
-## Технологии
+## Technologies
 
-### Фронтенд
+### Frontend
 - React
 - TypeScript
-- SignalR (для real-time коммуникации)
+- SignalR (for real-time communication)
 - CSS Modules
 
-### Бэкенд
+### Backend
 - ASP.NET Core
 - Entity Framework Core
 - MySQL
 - SignalR
-- JWT аутентификация
+- JWT Authentication
 
-## Установка и запуск
+## Installation and Launch
 
-### Требования
+### Requirements
 - .NET 7.0+
 - Node.js 16+
 - MySQL 8.0+
 
-### Настройка базы данных
-1. Создайте базу данных MySQL
-2. Обновите строку подключения в `backend/appsettings.json`
+### Database Setup
+1. Create a MySQL database
+2. Update the connection string in `backend/appsettings.json`
 
-### Запуск бэкенда
+### Starting the Backend
 ```bash
 cd backend
 dotnet restore
 dotnet run
 ```
 
-### Запуск фронтенда
+### Starting the Frontend
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-## Основные возможности
+## Main Features
 
-### Система чата
-- Мгновенные сообщения
-- Индикатор печати
-- Статус прочтения
-- История сообщений
+### Chat System
+- Instant Messaging
+- Typing Indicator
+- Read Status
+- Message History
 
-### Система друзей
-- Отправка заявок в друзья
-- Принятие/отклонение заявок
-- Список друзей
-- Поиск пользователей
+### Friends System
+- Sending Friend Requests
+- Accepting/Rejecting Requests
+- Friends List
+- Searching for Users
 
-### Лента постов
-- Создание постов
-- Комментирование
-- Лайки
-- Загрузка медиафайлов
+### Post Feed
+- Creating Posts
+- Commenting
+- Liking
+- Uploading Media
 
-### Онлайн-статус
-- Отслеживание активности пользователей
-- Автоматическое обновление статуса
-- Поддержка множественных вкладок
-- Автоматическое восстановление соединения
+### Online Status
+- Tracking User Activity
+- Automatic Status Updates
+- Multiple Tab Support
+- Automatic Connection Recovery
 
-## Безопасность
-- JWT аутентификация
-- Защита от XSS
-- CSRF токены
-- Безопасное хранение паролей
+## Security
+- JWT Authentication
+- XSS Protection
+- CSRF Tokens
+- Secure Storage Passwords
 
-## Производительность
-- Оптимизированные SQL запросы
-- Кэширование
-- Ленивая загрузка изображений
-- Бесконечная прокрутка
+## Performance
+- Optimized SQL queries
+- Caching
+- Lazy image loading
+- Infinite scrolling
 
-## Разработка
+## Development
 
-### Структура проекта
+### Project Structure
 ```
-├── backend/            # .NET Core backend
-│   ├── Controllers/   # API контроллеры
-│   ├── Models/        # Модели данных
-│   ├── Services/      # Бизнес-логика
-│   └── Hubs/          # SignalR хабы
-├── frontend/          # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── contexts/
-│   └── public/
+├── backend/ # .NET Core backend
+│ ├── Controllers/ # API controllers
+│ ├── Models/ # Data models
+│ ├── Services/ # Business logic
+│ └── Hubs/ # SignalR hubs
+├── frontend/ # React frontend
+│ ├── src/
+│ │ ├── components/
+│ │ ├── pages/
+│ │ ├── services/
+│ │ └── contexts/
+│ └── public/
 ```
 
-### Стиль кода
-- Придерживаемся принципов SOLID
-- Используем линтеры
-- Пишем тесты для критического функционала
-- Документируем API
+### Code Style
+- Adhere to SOLID principles
+- Use linters
+- Write tests for critical functionality
+- Document the API
 
-## Лицензия
+## License
 MIT
 
-## 🤝 Вклад в проект
+## 🤝 Contribute to the Project
 
-Мы приветствуем ваш вклад в проект! Пожалуйста, ознакомьтесь с нашими правилами для контрибьюторов перед началом работы.
+We welcome your contributions to the project! Please read our contributor guidelines before starting.
 
-## 📝 Лицензия
+## 📝 License
 
-Этот проект распространяется под лицензией MIT. Подробности смотрите в файле LICENSE.
+This project is licensed under the MIT License. See the LICENSE file for details.
 
-## 📞 Контакты
+## 📞 Contact
 
 tg: @FozuZXC
 
-Если у вас есть вопросы или предложения, пожалуйста, создайте issue в этом репозитории. 
+If you have questions or suggestions, please create an issue in this repository.
