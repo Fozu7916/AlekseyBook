@@ -48,21 +48,8 @@ A social network with a modern interface and advanced functionality.
 
 ## Documentation
 
-- [Features in detail](docs/features.md)
-- [Architecture and project structure](docs/architecture.md)
-- [Security and performance](docs/security-and-performance.md)
-- [Development guide](docs/development.md)
 
-## Contributing
+Full documentation: [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
 
-Contributions are welcome! Please read the [development guide](docs/development.md) before you start.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-Telegram: [@FozuZXC](https://t.me/FozuZXC)
 
 Questions or suggestions? Please open an issue in this repository.
