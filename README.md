@@ -49,7 +49,7 @@ A social network with a modern interface and advanced functionality.
 ## Documentation
 
 
-Full documentation: [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)
+Full documentation: [docs/DOCUMENTATION.md](Documentation.md)
 
 
 Questions or suggestions? Please open an issue in this repository.
